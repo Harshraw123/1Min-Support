@@ -1,9 +1,19 @@
-import React from 'react'
+import Navbar from "@/components/Navbar";
+import HeroSection from "@/components/HeroSection";
+import FeaturesSection from "@/components/FeaturesSection";
+import CTASection from "@/components/CTASection";
+import Footer from "@/components/Footer";
 
-const page = () => {
+const Index = () => {
   return (
-    <div className='text-red-400'>Hello </div>
-  )
-}
+    <div className="min-h-screen">
+      <Navbar />
+      <HeroSection />
+      <FeaturesSection />
+      <CTASection />
+      <Footer />
+    </div>
+  );
+};
 
-export default page
+export default Index;

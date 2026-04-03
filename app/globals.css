@@ -127,4 +127,16 @@
   html {
     @apply font-sans;
   }
+
+  .glass {
+    @apply bg-white/60 backdrop-blur-xl border border-white/30;
+    box-shadow: var(--shadow-glass);
+  }
+  .glass-strong {
+    @apply bg-white/80 backdrop-blur-2xl border border-white/40;
+    box-shadow: var(--shadow-elevated);
+  }
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
 }
