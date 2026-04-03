@@ -1,6 +1,9 @@
+'use client'
+
+
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { useScrollReveal } from '../hooks/useScrollReveal'
 
 const CTASection = () => {
   const { ref, isVisible } = useScrollReveal();
@@ -14,7 +17,7 @@ const CTASection = () => {
             isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-8 scale-95"
           }`}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+          <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-brand-orange/10 dark:from-primary/20 dark:to-brand-orange/15" />
           <div className="relative z-10">
             <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
               Ready to Transform Your Support?

@@ -1,26 +1,26 @@
 import { Bot, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import heroBg from "@/assets/hero-bg.jpg";
+
 
 const HeroSection = () => {
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image */}
       <img
-        src={heroBg}
+        src={'/hero-bg.jpg'}
         alt=""
         width={1920}
         height={1080}
         className="absolute inset-0 w-full h-full object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/20 to-background" />
+      <div className="absolute inset-0 bg-linear-to-b from-primary/25 via-background/50 to-background" />
 
       <div className="container mx-auto px-6 pt-24 pb-16 relative z-10">
         <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 items-center">
           {/* Left */}
           <div className="max-w-xl mx-auto lg:mx-0 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-6 text-xs font-medium text-primary">
-              <Sparkles size={14} />
+            <div className="hero-badge mb-6">
+              <Sparkles size={14} className="shrink-0" />
               AI-Powered Customer Support
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight text-foreground">
@@ -32,23 +32,25 @@ const HeroSection = () => {
             </p>
             <div className="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
               <Button size="lg" className="text-base px-8">Get Started Free</Button>
-              <Button size="lg" variant="outline" className="text-base px-8 glass border-primary/20 hover:bg-primary/5">
+              <Button size="lg" variant="secondary" className="text-base px-8 shadow-sm">
                 Learn More
               </Button>
             </div>
 
             {/* Trust logos placeholder */}
-            <div className="mt-12 flex items-center gap-6 opacity-50 justify-center lg:justify-start">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Trusted by</span>
+            <div className="mt-12 flex flex-wrap items-center gap-6 justify-center lg:justify-start">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground/90">Trusted by</span>
               {["TechCorp", "StartupX", "CloudBase"].map((name) => (
-                <span key={name} className="text-sm font-semibold text-foreground/40">{name}</span>
+                <span key={name} className="text-sm font-semibold text-muted-foreground/75">
+                  {name}
+                </span>
               ))}
             </div>
           </div>
 
           {/* Right - Chat Widget Preview (square) */}
           <div className="hidden lg:flex justify-end">
-            <div className="glass-strong rounded-2xl p-6 w-[400px] h-[400px] flex flex-col animate-fade-in">
+            <div className="chat-card w-[400px] h-[400px] animate-in fade-in duration-700">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Bot size={20} className="text-primary" />
@@ -60,18 +62,18 @@ const HeroSection = () => {
               </div>
 
               <div className="space-y-3 flex-1 overflow-hidden">
-                <div className="glass rounded-xl px-4 py-3 text-sm text-foreground/80 max-w-[80%]">
+                <div className="chat-bubble-in max-w-[80%]">
                   Hi! 👋 How can I help you today?
                 </div>
-                <div className="bg-primary text-primary-foreground rounded-xl px-4 py-3 text-sm max-w-[80%] ml-auto">
+                <div className="bg-primary text-primary-foreground rounded-xl px-4 py-3 text-sm max-w-[80%] ml-auto shadow-sm">
                   I need help with my subscription
                 </div>
-                <div className="glass rounded-xl px-4 py-3 text-sm text-foreground/80 max-w-[85%]">
+                <div className="chat-bubble-in max-w-[85%]">
                   Sure! I can see your account. Let me pull up your subscription details right away.
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 glass rounded-xl px-4 py-3 mt-3">
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-3 shadow-sm dark:border-border dark:bg-muted/30">
                 <input
                   type="text"
                   placeholder="Type a message..."

@@ -1,5 +1,7 @@
+'use client'
+
 import { Clock, BarChart3, MessageSquare, Shield, Zap, Globe } from "lucide-react";
-import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { useScrollReveal } from '../hooks/useScrollReveal'
 
 const features = [
   {

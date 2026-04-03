@@ -1,4 +1,6 @@
-import { useScrollReveal } from "@/hooks/useScrollReveal";
+
+'use client'
+import { useScrollReveal } from '../hooks/useScrollReveal'
 
 const Footer = () => {
   const { ref, isVisible } = useScrollReveal(0.2);
