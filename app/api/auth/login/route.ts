@@ -5,11 +5,7 @@ import { scalekit } from "@/lib/scalekit";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_APP_URL is not defined");
-  }
+  const baseUrl = new URL(req.url).origin;
 
 
     // /.give authorize url after succesfull signup
@@ -25,8 +21,6 @@ export async function GET(req: NextRequest) {
 
   // Get authorization URL from Scalekit
   const url = await scalekit.getAuthorizationUrl(redirectUrl);
-
-  console.log(url);
 
   return NextResponse.redirect(url);
 }

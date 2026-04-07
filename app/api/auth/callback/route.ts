@@ -2,21 +2,17 @@ import { scalekit } from "@/lib/scalekit"; // 🔥 missing import
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) { // ✅ GET (capital) + NextRequest correct
-  const { searchParams } = new URL(req.url); // code wala param chayie
+  const { searchParams, origin } = new URL(req.url); // code wala param chayie
 
   // http://localhost:3000/api/auth/callback?code=xyz
 
   const code = searchParams.get("code"); // ✅ fixed typo (serachParams)
 
   if (!code) {
-    return NextResponse.json({ message: "code is not Found" });
+    return NextResponse.redirect(origin);
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_APP_URL not defined");
-  }
+  const baseUrl = origin;
 
   const redirectUri = `${baseUrl}/api/auth/callback`;
 

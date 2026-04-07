@@ -1,17 +1,38 @@
+'use client'
+
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Bot, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 
-const HeroSection = () => {
+type HeroSectionProps = {
+  isAuthenticated: boolean;
+};
+
+const HeroSection = ({ isAuthenticated }: HeroSectionProps) => {
+  const router = useRouter();
+
+  function handleClick() {
+    if (isAuthenticated) {
+      window.location.href = "/dashboard";
+      return;
+    }
+   window.location.href = "/api/auth/login"
+  }
+
+
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image */}
-      <img
-        src={'/hero-bg.jpg'}
-        alt=""
-        width={1920}
-        height={1080}
-        className="absolute inset-0 w-full h-full object-cover"
+      <Image
+        src="/hero-bg.jpg"
+        alt="AI customer support interface background"
+        fill
+        priority
+        sizes="100vw"
+        className="absolute inset-0 h-full w-full object-cover"
       />
       <div className="absolute inset-0 bg-linear-to-b from-primary/25 via-background/50 to-background" />
 
@@ -31,8 +52,10 @@ const HeroSection = () => {
               Deploy an AI support agent on your website that handles customer queries 24/7, reduces wait times, and gives you powerful analytics.
             </p>
             <div className="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
-              <Button size="lg" className="text-base px-8">Get Started Free</Button>
-              <Button size="lg" variant="secondary" className="text-base px-8 shadow-sm">
+ 
+             <Button onClick={handleClick} size="lg" className="text-base px-8 cursor-pointer hover:bg-blue-700">Get Started Free</Button>
+          
+              <Button size="lg" variant="secondary" className="text-base px-8 shadow-sm hover:cursor-pointer">
                 Learn More
               </Button>
             </div>

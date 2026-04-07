@@ -12,9 +12,19 @@ type Props = {
 
 function getDisplayName(user: SessionUser | null): string {
   if (!user) return "";
-  const name = typeof user.name === "string" ? user.name : "";
-  const email = typeof user.email === "string" ? user.email : "";
-  return name || email || "Profile";
+
+
+  const name=user?.user?.userProfile?.firstName
+  const email=user?.user?.email
+
+
+
+  const userName= name || ""
+  const userEmail = email || "";
+
+  console.log(userName)
+  console.log(userEmail)
+  return userName|| userEmail || "Profile";
 }
 
 function getInitial(user: SessionUser | null): string {

@@ -1,16 +1,22 @@
-import { NextResponse } from "next/server";
+import { scalekit } from "@/lib/scalekit";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "/";
-  const response = NextResponse.redirect(baseUrl);
+export async function GET(req: NextRequest) {
+  const baseUrl = new URL(req.url).origin;
 
-  response.cookies.set("access_token", "", {
-    httpOnly: true,
-    maxAge: 0,
-    secure: false,
-    path: "/",
+  const idTokenHint = req.cookies.get("idToken")?.value;
+  const postLogoutRedirectUri = baseUrl;
+
+  const logoutUrl = scalekit.getLogoutUrl({
+    idTokenHint,
+    postLogoutRedirectUri,
   });
+
+  const response = NextResponse.redirect(logoutUrl);
+
+  response.cookies.delete("access_token");
+  response.cookies.delete("refresh_token");
+  response.cookies.delete("idToken");
 
   return response;
 }
-

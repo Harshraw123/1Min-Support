@@ -6,13 +6,13 @@ import CTASection from "./components/CTASection";
 import Footer from "./components/Footer";
 import { getSession } from "@/lib/getSession";
 
-const Index = () => {
-
+const Index = async () => {
+  const user = await getSession();
 
   return (
     <div className="min-h-screen">
       <Navbar />
-      <HeroSection />
+      <HeroSection isAuthenticated={Boolean(user)} />
       <FeaturesSection />
       <CTASection />
       <Footer />
