@@ -7,20 +7,20 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   const baseUrl = new URL(req.url).origin;
 
-
-    // /.give authorize url after succesfull signup
-
-    //jo bhi scalekit session ya token dega usko cokkies me store kralenge via call back
-  // lgin ke baad url pe direct hone vo hai api/auth/callback
-
-
-
-  // Callback URL after login
+  // Callback URL after login - ensure this matches your Scalekit dashboard
   const redirectUrl = `${baseUrl}/api/auth/callback`;
 
+  console.log("Login attempt - Base URL:", baseUrl);
+  console.log("Login attempt - Redirect URL:", redirectUrl);
 
-  // Get authorization URL from Scalekit
-  const url = await scalekit.getAuthorizationUrl(redirectUrl);
-
-  return NextResponse.redirect(url);
+  try {
+    // Get authorization URL from Scalekit
+    const authUrl = await scalekit.getAuthorizationUrl(redirectUrl);
+    console.log("Scalekit auth URL:", authUrl);
+    return NextResponse.redirect(authUrl);
+  } catch (error) {
+    console.error("Login error:", error);
+    // Fallback to home page if there's an error
+    return NextResponse.redirect(baseUrl);
+  }
 }
