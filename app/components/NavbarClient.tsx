@@ -13,30 +13,22 @@ type Props = {
 function getDisplayName(user: SessionUser | null): string {
   if (!user) return "";
 
+  const name = user.user?.userProfile?.firstName ?? "";
+  const email = user.user?.email ?? "";
 
-  const name=user?.user?.userProfile?.firstName
-  const email=user?.user?.email
-
-
-
-  const userName= name || ""
-  const userEmail = email || "";
-
-  console.log(userName)
-  console.log(userEmail)
-  return userName|| userEmail || "Profile";
+  return name || email || "Profile";
 }
 
 function getInitial(user: SessionUser | null): string {
   const display = getDisplayName(user).trim();
-  const ch = display[0] ?? "U";
-  return ch.toUpperCase();
+  return display.charAt(0).toUpperCase() || "U";
 }
 
 export default function NavbarClient({ user }: Props) {
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
+
   const links = ["Features", "Solutions", "Pricing", "Blog"];
 
   const displayName = useMemo(() => getDisplayName(user), [user]);
@@ -52,13 +44,16 @@ export default function NavbarClient({ user }: Props) {
 
   useEffect(() => {
     if (!profileOpen) return;
+
     const onPointerDown = (e: PointerEvent) => {
       const el = profileRef.current;
       if (!el) return;
+
       if (e.target instanceof Node && !el.contains(e.target)) {
         setProfileOpen(false);
       }
     };
+
     window.addEventListener("pointerdown", onPointerDown);
     return () => window.removeEventListener("pointerdown", onPointerDown);
   }, [profileOpen]);
@@ -66,9 +61,10 @@ export default function NavbarClient({ user }: Props) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass">
       <div className="max-w-7xl mx-auto flex items-center justify-between py-3 px-4 sm:px-6">
+        
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <Image src={"/logo.png"} alt="logo" height={50} width={50} />
+          <Image src="/logo.png" alt="logo" height={50} width={50} />
           <span className="text-lg sm:text-xl font-bold text-primary whitespace-nowrap">
             1Min Support
           </span>
@@ -87,7 +83,7 @@ export default function NavbarClient({ user }: Props) {
           ))}
         </div>
 
-        {/* Desktop Buttons / Profile */}
+        {/* Desktop Auth */}
         <div className="hidden md:flex items-center gap-2 lg:gap-3">
           {!user ? (
             <>
@@ -98,12 +94,12 @@ export default function NavbarClient({ user }: Props) {
             </>
           ) : (
             <div className="relative" ref={profileRef}>
+              
+              {/* Profile Button */}
               <button
                 type="button"
                 onClick={() => setProfileOpen((v) => !v)}
                 className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1 hover:bg-muted transition-colors"
-                aria-haspopup="menu"
-                aria-expanded={profileOpen}
               >
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
                   {initial}
@@ -113,23 +109,24 @@ export default function NavbarClient({ user }: Props) {
                 </span>
               </button>
 
+              {/* Dropdown */}
               {profileOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden"
-                >
+                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-background/95 backdrop-blur shadow-lg overflow-hidden">
+                  
                   <div className="px-3 py-2">
-                    <div className="text-sm font-semibold text-foreground truncate">
-                      {typeof user.name === "string" && user.name ? user.name : "Signed in"}
+                    <div className="text-sm font-semibold truncate">
+                      {user.user?.userProfile?.firstName || "Signed in"}
                     </div>
-                    {typeof user.email === "string" && user.email ? (
-                      <div className="text-xs text-muted-foreground truncate">{user.email}</div>
-                    ) : null}
+                    {user.user?.email && (
+                      <div className="text-xs text-muted-foreground truncate">
+                        {user.user.email}
+                      </div>
+                    )}
                   </div>
+
                   <div className="h-px bg-border" />
+
                   <button
-                    type="button"
-                    role="menuitem"
                     onClick={handleLogout}
                     className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
                   >
@@ -144,9 +141,8 @@ export default function NavbarClient({ user }: Props) {
 
         {/* Mobile Toggle */}
         <button
-          className="md:hidden flex items-center justify-center"
+          className="md:hidden"
           onClick={() => setOpen(!open)}
-          aria-label="Toggle menu"
         >
           {open ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -155,12 +151,13 @@ export default function NavbarClient({ user }: Props) {
       {/* Mobile Menu */}
       {open && (
         <div className="md:hidden glass-strong px-4 pb-5 pt-2 flex flex-col gap-4">
+          
           {links.map((l) => (
             <a
               key={l}
               href={`#${l.toLowerCase()}`}
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
               onClick={() => setOpen(false)}
+              className="text-sm font-medium text-muted-foreground hover:text-primary"
             >
               {l}
             </a>
@@ -168,26 +165,30 @@ export default function NavbarClient({ user }: Props) {
 
           {!user ? (
             <div className="flex flex-col gap-2">
-              <Button variant="ghost" size="sm" className="w-full" onClick={handleLogin}>
+              <Button variant="ghost" size="sm" onClick={handleLogin}>
                 Log In
               </Button>
-              <Button size="sm" className="w-full">
-                Get Started
-              </Button>
+              <Button size="sm">Get Started</Button>
             </div>
           ) : (
-            <div className="flex items-center justify-between rounded-xl border border-border bg-background/60 px-3 py-2">
+            <div className="flex items-center justify-between rounded-xl border px-3 py-2">
+              
               <div className="flex items-center gap-3 min-w-0">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                <span className="h-9 w-9 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
                   {initial}
                 </span>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-foreground truncate">{displayName}</div>
-                  {typeof user.email === "string" && user.email ? (
-                    <div className="text-xs text-muted-foreground truncate">{user.email}</div>
-                  ) : null}
+                  <div className="text-sm font-semibold truncate">
+                    {displayName}
+                  </div>
+                  {user.user?.email && (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {user.user.email}
+                    </div>
+                  )}
                 </div>
               </div>
+
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Logout
               </Button>
@@ -198,4 +199,3 @@ export default function NavbarClient({ user }: Props) {
     </nav>
   );
 }
-

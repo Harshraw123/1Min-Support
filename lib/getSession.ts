@@ -2,8 +2,13 @@ import { cookies } from "next/headers";
 import { scalekit } from "./scalekit";
 
 export type SessionUser = {
-  name?: string | null;
-  email?: string | null;
+  user?: {
+    email?: string;
+    userProfile?: {
+      firstName?: string;
+      lastName?: string;
+    };
+  };
   [key: string]: unknown;
 };
 
