@@ -4,16 +4,17 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   const baseUrl = new URL(req.url).origin;
 
+  // Get the ID token hint for Scalekit logout
   const idTokenHint = req.cookies.get("idToken")?.value;
-  const postLogoutRedirectUri = baseUrl;
-
-  const logoutUrl = scalekit.getLogoutUrl({
-    idTokenHint,
-    postLogoutRedirectUri,
-  });
-
-  const response = NextResponse.redirect(logoutUrl);
-
+  
+  // Clear local auth cookies
+  const response = NextResponse.redirect(
+    scalekit.getLogoutUrl({
+      idTokenHint,
+      postLogoutRedirectUri:'http://localhost:3000/api/auth/login',
+    })
+  );
+  
   response.cookies.delete("access_token");
   response.cookies.delete("refresh_token");
   response.cookies.delete("idToken");
