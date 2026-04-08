@@ -12,18 +12,25 @@ export default function AuthToastHandler() {
     const logoutStatus = searchParams.get('logout');
     const errorStatus = searchParams.get('error');
 
+    const clearAuthParams = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("login");
+      url.searchParams.delete("logout");
+      url.searchParams.delete("error");
+      url.searchParams.delete("description");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    };
+
     // Show success toast for login
     if (loginStatus === 'success') {
       authToast.loginSuccess();
-      // Clean URL params
-      window.history.replaceState(null, '', window.location.pathname);
+      clearAuthParams();
     }
 
     // Show success toast for logout
     if (logoutStatus === 'success') {
       authToast.logoutSuccess();
-      // Clean URL params
-      window.history.replaceState(null, '', window.location.pathname);
+      clearAuthParams();
     }
 
     // Show error toast for auth errors
@@ -33,8 +40,7 @@ export default function AuthToastHandler() {
       } else {
         authToast.authError();
       }
-      // Clean URL params
-      window.history.replaceState(null, '', window.location.pathname);
+      clearAuthParams();
     }
   }, [searchParams]);
 
