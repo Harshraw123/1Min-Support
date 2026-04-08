@@ -7,8 +7,13 @@ export async function GET(req: NextRequest) {
   // Get the ID token hint for Scalekit logout
   const idTokenHint = req.cookies.get("idToken")?.value;
   
-  // Clear local auth cookies first
-  const response = NextResponse.redirect(`${baseUrl}?logout=success`);
+  // Clear local auth cookies
+  const response = NextResponse.redirect(
+    scalekit.getLogoutUrl({
+      idTokenHint,
+      postLogoutRedirectUri:'http://localhost:3000/api/auth/login',
+    })
+  );
   
   response.cookies.delete("access_token");
   response.cookies.delete("refresh_token");

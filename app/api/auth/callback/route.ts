@@ -33,8 +33,8 @@ export async function GET(req: NextRequest) {
     
     console.log("Session created successfully");
 
-    // Redirect to home page with success indicator
-    const response = NextResponse.redirect(`${baseUrl}?login=success`);
+    // Redirect to home page after successful login
+    const response = NextResponse.redirect(baseUrl);
 
     // Store access token in cookie
     response.cookies.set("access_token", session.accessToken, {
@@ -70,3 +70,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${origin}?error=auth_failed`);
   }
 }
+
+
+
+  // Flow (now correct):
+// Scalekit → redirects to
+// /api/auth/callback?code=...
+// You extract code
+// Exchange → accessToken
+// Store in cookie 🍪
+// Redirect user to homepage
