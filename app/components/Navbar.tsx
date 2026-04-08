@@ -1,7 +1,10 @@
-import { getSession } from "@/lib/getSession";
+import { type SessionUser } from "@/lib/getSession";
 import NavbarClient from "./NavbarClient";
 
-export default async function Navbar() {
-  const user = await getSession();
+interface NavbarProps {
+  user: SessionUser | null;
+}
+
+export default function Navbar({ user }: NavbarProps) {
   return <NavbarClient user={user} />;
 }

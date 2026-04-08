@@ -4,8 +4,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Bot, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
-
 
 type HeroSectionProps = {
   isAuthenticated: boolean;
@@ -24,8 +22,10 @@ const HeroSection = ({ isAuthenticated }: HeroSectionProps) => {
 
 
   return (
+
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image */}
+      
       <Image
         src="/hero-bg.avif"
         alt="AI customer support interface background"
