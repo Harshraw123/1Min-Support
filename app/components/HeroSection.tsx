@@ -27,7 +27,7 @@ const HeroSection = ({ isAuthenticated }: HeroSectionProps) => {
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image */}
       <Image
-        src="/hero-bg.jpg"
+        src="/hero-bg.avif"
         alt="AI customer support interface background"
         fill
         priority
@@ -53,7 +53,7 @@ const HeroSection = ({ isAuthenticated }: HeroSectionProps) => {
             </p>
             <div className="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
  
-             <Button onClick={handleClick} size="lg" className="text-base px-8 cursor-pointer hover:bg-blue-700">Get Started Free</Button>
+             <Button onClick={handleClick} size="lg" className="text-base px-8 cursor-pointer hover:bg-primary/90">Get Started Free</Button>
           
               <Button size="lg" variant="secondary" className="text-base px-8 shadow-sm hover:cursor-pointer">
                 Learn More

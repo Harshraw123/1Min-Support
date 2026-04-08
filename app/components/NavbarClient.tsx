@@ -12,10 +12,8 @@ type Props = {
 
 function getDisplayName(user: SessionUser | null): string {
   if (!user) return "";
-
   const name = user.user?.userProfile?.firstName ?? "";
   const email = user.user?.email ?? "";
-
   return name || email || "Profile";
 }
 

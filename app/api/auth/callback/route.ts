@@ -33,8 +33,11 @@ export async function GET(req: NextRequest) {
     
     console.log("Session created successfully");
 
+
     // Redirect to home page after successful login
     const response = NextResponse.redirect(baseUrl);
+
+
 
     // Store access token in cookie
     response.cookies.set("access_token", session.accessToken, {
@@ -69,6 +72,7 @@ export async function GET(req: NextRequest) {
     console.error("Authentication error:", error);
     return NextResponse.redirect(`${origin}?error=auth_failed`);
   }
+
 }
 
 
@@ -80,3 +84,6 @@ export async function GET(req: NextRequest) {
 // Exchange → accessToken
 // Store in cookie 🍪
 // Redirect user to homepage
+
+
+
