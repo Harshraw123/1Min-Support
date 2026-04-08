@@ -27,7 +27,7 @@ export const authToast = {
     toast.success('Successfully logged in! Welcome back.')
   },
   logoutSuccess: () => {
-    toast.success('Successfully logged out! See you again soon.')
+    toast.success('Logged out successfully')
   },
   loginFailed: () => {
     toast.error('Login failed. Please try again.')

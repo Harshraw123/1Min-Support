@@ -3,7 +3,8 @@ import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
-import AuthToastHandler from "../components/ui/sonner";
+import AuthToastHandler from "./components/AuthToastHandler";
+
 
 // 🔹 Main UI font (clean + modern)
 const spaceGrotesk = Space_Grotesk({
@@ -43,8 +44,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
-        <Toaster />
         <AuthToastHandler />
+        <Toaster />
+
       </body>
     </html>
   );
