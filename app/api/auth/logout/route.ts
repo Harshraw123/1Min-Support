@@ -19,5 +19,18 @@ export async function GET(req: NextRequest) {
   response.cookies.delete("refresh_token");
   response.cookies.delete("idToken");
 
+  // Also try to logout from Scalekit if needed
+  try {
+    if (idTokenHint) {
+      const logoutUrl = scalekit.getLogoutUrl({
+        idTokenHint,
+        postLogoutRedirectUri: baseUrl,
+      });
+      // You could redirect to Scalekit logout first, but for now just clear local session
+    }
+  } catch (error) {
+    console.error("Scalekit logout error:", error);
+  }
+
   return response;
 }

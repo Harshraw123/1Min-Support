@@ -50,14 +50,14 @@
 }
 
 :root {
-  /* Reference: slate text, violet primary #7C3AED, orange accent #FB923C */
+  /* Reference: slate text, image purple primary #8A2BE2, orange accent #FB923C */
   --background: oklch(0.99 0.01 286);
   --foreground: oklch(0.208 0.042 265.755);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.208 0.042 265.755);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.208 0.042 265.755);
-  --primary: oklch(0.546 0.245 262.881);
+  --primary: oklch(0.45 0.22 290); /* Image purple #8A2BE2 */
   --primary-foreground: oklch(0.985 0.002 286);
   --brand-orange: oklch(0.745 0.181 55.934);
   --secondary: oklch(0.968 0.007 286.375);
@@ -69,7 +69,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0.006 286.286);
   --input: oklch(0.922 0.006 286.286);
-  --ring: oklch(0.546 0.245 262.881);
+  --ring: oklch(0.45 0.22 290); /* Image purple #8A2BE2 */
   --chart-1: oklch(0.845 0.143 164.978);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.596 0.145 163.225);
@@ -80,12 +80,12 @@
   --shadow-elevated: 0 16px 48px oklch(0.145 0 0 / 12%), 0 4px 16px oklch(0.145 0 0 / 6%);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-primary: oklch(0.546 0.245 262.881);
+  --sidebar-primary: oklch(0.45 0.22 290); /* Image purple #8A2BE2 */
   --sidebar-primary-foreground: oklch(0.985 0.002 286);
   --sidebar-accent: oklch(0.97 0.02 285);
   --sidebar-accent-foreground: oklch(0.278 0.026 256.848);
   --sidebar-border: oklch(0.922 0.006 286.286);
-  --sidebar-ring: oklch(0.546 0.245 262.881);
+  --sidebar-ring: oklch(0.45 0.22 290); /* Image purple #8A2BE2 */
 }
 
 .dark {
@@ -95,7 +95,7 @@
   --card-foreground: oklch(0.985 0.002 286);
   --popover: oklch(0.205 0.02 265);
   --popover-foreground: oklch(0.985 0.002 286);
-  --primary: oklch(0.65 0.22 265);
+  --primary: oklch(0.55 0.20 290); /* Image purple for dark mode */
   --primary-foreground: oklch(0.985 0.002 286);
   --brand-orange: oklch(0.78 0.16 58);
   --secondary: oklch(0.274 0.02 260);
@@ -107,7 +107,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.65 0.22 265);
+  --ring: oklch(0.55 0.20 290); /* Image purple for dark mode */
   --chart-1: oklch(0.845 0.143 164.978);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.596 0.145 163.225);
@@ -117,12 +117,12 @@
   --shadow-elevated: 0 16px 48px oklch(0 0 0 / 45%), 0 4px 16px oklch(0 0 0 / 30%);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.65 0.22 265);
+  --sidebar-primary: oklch(0.55 0.20 290); /* Image purple for dark mode */
   --sidebar-primary-foreground: oklch(0.985 0.002 286);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.55 0.20 290); /* Image purple for dark mode */
 }
 
 @layer base {
@@ -156,4 +156,28 @@
   .chat-bubble-in {
     @apply rounded-xl border border-slate-200/90 bg-white px-4 py-3 text-sm text-foreground/85 shadow-sm dark:border-border dark:bg-muted/40;
   }
+}
+
+/* Global override for any remaining blue colors to image purple */
+[class*="bg-blue-"],
+[class*="text-blue-"],
+[class*="border-blue-"],
+.bg-blue-500,
+.bg-blue-600,
+.bg-blue-700,
+.bg-blue-800,
+.bg-blue-900,
+.text-blue-500,
+.text-blue-600,
+.text-blue-700,
+.text-blue-800,
+.text-blue-900,
+.border-blue-500,
+.border-blue-600,
+.border-blue-700,
+.border-blue-800,
+.border-blue-900 {
+  color: oklch(0.45 0.22 290) !important;
+  background-color: oklch(0.45 0.22 290) !important;
+  border-color: oklch(0.45 0.22 290) !important;
 }
