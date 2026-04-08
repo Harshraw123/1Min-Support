@@ -34,8 +34,10 @@ export async function GET(req: NextRequest) {
     console.log("Session created successfully");
 
 
-    // Redirect to home page after successful login
-    const response = NextResponse.redirect(baseUrl);
+    // Redirect to home page after successful login (with toast flag)
+    const redirectTarget = new URL(baseUrl);
+    redirectTarget.searchParams.set("login", "success");
+    const response = NextResponse.redirect(redirectTarget);
 
 
 
