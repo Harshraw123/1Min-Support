@@ -1,7 +1,7 @@
 'use client'
 
 import { useScrollReveal } from '../hooks/useScrollReveal';
-import FeatureCard from './FeatureCard';
+import FeatureCardClient from './FeatureCardClient';
 import { features } from '../../lib/features';
 
 const FeaturesSection = () => {
@@ -29,7 +29,7 @@ const FeaturesSection = () => {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
-            <FeatureCard key={feature.title} feature={feature} index={index} />
+            <FeatureCardClient key={feature.title} feature={feature} index={index} />
           ))}
         </div>
       </div>

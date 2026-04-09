@@ -1,6 +1,7 @@
 import { features } from "@/lib/features";
 import FeatureCardClient from "./FeatureCardClient";
 
+
 const FeaturesSection = () => {
   return (
     <section id="features" className="py-24 relative">
