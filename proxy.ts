@@ -2,11 +2,19 @@
 
 import { getSession } from './lib/getSession';
 import { NextRequest, NextResponse } from "next/server";
+import { scalekitSessionCookieName, verifyScalekitSessionCookieValue } from "./lib/sessionCookie";
 
 export async function proxy(req: NextRequest) {
   try {
-    const session = await getSession();
     const baseUrl = new URL(req.url).origin;
+
+    // Fast-path: verify signed cookie without calling Scalekit on every request.
+    const accessToken = req.cookies.get("access_token")?.value;
+    const fastCookie = req.cookies.get(scalekitSessionCookieName)?.value;
+    const fastOk = verifyScalekitSessionCookieValue(accessToken, fastCookie);
+
+    // Safe fallback when secret is missing or cookie isn't present (keeps current behavior).
+    const session = fastOk ? { user: {} } : await getSession();
 
     if (!session) {
       // Redirect to home page if not authenticated
@@ -14,7 +22,7 @@ export async function proxy(req: NextRequest) {
     }
 
     // User is authenticated, proceed to dashboard
-    console.log("Authenticated user accessing dashboard:", session.user?.email);
+    if (!fastOk) console.log("Authenticated user accessing dashboard:", session.user?.email);
     return NextResponse.next();
   } catch (error) {
     console.error("Proxy middleware error:", error);

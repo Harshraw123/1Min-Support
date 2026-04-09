@@ -1,46 +1,37 @@
-import {
-    Clock,
-    BarChart3,
-    MessageSquare,
-    Shield,
-    Zap,
-    Globe,
-  } from "lucide-react";
-  
-  export type FeatureItem = {
-    icon: React.ComponentType<{ size?: number; className?: string }>;
+export type FeatureItem = {
+    iconName: string;
     title: string;
     desc: string;
   };
   
   export const features: FeatureItem[] = [
     {
-      icon: Clock,
+      iconName: "Clock",
       title: "24/7 Instant Support",
       desc: "Your AI agent never sleeps. Customers get instant, accurate responses any time of day or night.",
     },
     {
-      icon: MessageSquare,
+      iconName: "MessageSquare",
       title: "Smart Query Resolution",
       desc: "AI understands context and resolves complex queries without human intervention.",
     },
     {
-      icon: BarChart3,
+      iconName: "BarChart3",
       title: "Admin Analytics Dashboard",
       desc: "Track resolution rates, customer satisfaction, and agent performance in real-time.",
     },
     {
-      icon: Zap,
+      iconName: "Zap",
       title: "One-Minute Setup",
       desc: "Add a single script tag to your website and your AI agent is live. No coding required.",
     },
     {
-      icon: Globe,
+      iconName: "Globe",
       title: "Multi-Language Support",
       desc: "Serve customers worldwide with automatic language detection and response.",
     },
     {
-      icon: Shield,
+      iconName: "Shield",
       title: "Enterprise Security",
       desc: "SOC 2 compliant with end-to-end encryption for all customer conversations.",
     },

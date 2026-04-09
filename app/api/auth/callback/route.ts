@@ -1,5 +1,6 @@
 import { scalekit } from "@/lib/scalekit";
 import { NextRequest, NextResponse } from "next/server";
+import { createScalekitSessionCookieValue, scalekitSessionCookieName } from "@/lib/sessionCookie";
 
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
@@ -42,12 +43,29 @@ export async function GET(req: NextRequest) {
 
 
     // Store access token in cookie
+    const accessTokenMaxAge = 24 * 60 * 60; // 1 day
     response.cookies.set("access_token", session.accessToken, {
       httpOnly: true,
-      maxAge: 24 * 60 * 60, // 1 day
+      maxAge: accessTokenMaxAge,
       secure: process.env.NODE_ENV === "production",
       path: "/",
+      sameSite: "lax",
     });
+
+    // Fast-path auth cookie: lets middleware check auth without hitting Scalekit on every request.
+    // If the secret isn't configured, we simply skip setting it and fall back to slow validation.
+    try {
+      const fastCookieValue = createScalekitSessionCookieValue(session.accessToken, accessTokenMaxAge);
+      response.cookies.set(scalekitSessionCookieName, fastCookieValue, {
+        httpOnly: true,
+        maxAge: accessTokenMaxAge,
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        sameSite: "lax",
+      });
+    } catch {
+      // no-op
+    }
 
     // Store refresh token if available
     if (session.refreshToken) {
@@ -56,6 +74,7 @@ export async function GET(req: NextRequest) {
         maxAge: 7 * 24 * 60 * 60, // 7 days
         secure: process.env.NODE_ENV === "production",
         path: "/",
+        sameSite: "lax",
       });
     }
 
@@ -66,6 +85,7 @@ export async function GET(req: NextRequest) {
         maxAge: 24 * 60 * 60, // 1 day
         secure: process.env.NODE_ENV === "production",
         path: "/",
+        sameSite: "lax",
       });
     }
 

@@ -1,15 +1,34 @@
 'use client'
 
 import { useScrollReveal } from '../hooks/useScrollReveal'
-import type { FeatureItem } from '@/lib/features'
+import type { FeatureItem } from '../../lib/features'
+import { 
+  Clock, 
+  BarChart3, 
+  MessageSquare, 
+  Shield, 
+  Zap, 
+  Globe 
+} from 'lucide-react'
 
 interface FeatureCardClientProps {
   feature: FeatureItem;
   index: number;
 }
 
+const iconMap = {
+  Clock: Clock,
+  BarChart3: BarChart3,
+  MessageSquare: MessageSquare,
+  Shield: Shield,
+  Zap: Zap,
+  Globe: Globe,
+};
+
 const FeatureCardClient = ({ feature, index }: FeatureCardClientProps) => {
   const { ref, isVisible } = useScrollReveal(0.1);
+  const IconComponent =
+    iconMap[feature.iconName as keyof typeof iconMap] ?? Clock;
   
   return (
     <div
@@ -20,7 +39,7 @@ const FeatureCardClient = ({ feature, index }: FeatureCardClientProps) => {
       }`}
     >
       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-        <feature.icon size={22} className="text-primary" />
+        {IconComponent && <IconComponent size={22} className="text-primary" />}
       </div>
       <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>

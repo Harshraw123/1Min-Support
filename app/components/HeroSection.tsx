@@ -4,20 +4,24 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Bot, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuthSync } from "@/hooks/useAuthSync";
+import type { SessionUser } from "@/lib/getSession";
 
 type HeroSectionProps = {
   isAuthenticated: boolean;
+  serverUser?: SessionUser | null;
 };
 
-const HeroSection = ({ isAuthenticated }: HeroSectionProps) => {
+const HeroSection = ({ isAuthenticated, serverUser }: HeroSectionProps) => {
   const router = useRouter();
+  const { user, isLoading } = useAuthSync(serverUser || null);
 
   function handleClick() {
-    if (isAuthenticated) {
+    if (user || isLoading) {
       window.location.href = "/dashboard";
       return;
     }
-   window.location.href = "/api/auth/login"
+    window.location.href = "/api/auth/login"
   }
 
 

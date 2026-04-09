@@ -5,10 +5,13 @@ import { Menu, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import type { SessionUser } from "@/lib/getSession";
+import { useAuthSync } from "@/hooks/useAuthSync";
 
 type Props = {
   user: SessionUser | null;
+  isAuthenticated: boolean;
 };
+
 
 function getDisplayName(user: SessionUser | null): string {
   if (!user) return "";
@@ -21,8 +24,9 @@ function getInitial(user: SessionUser | null): string {
   const display = getDisplayName(user).trim();
   return display.charAt(0).toUpperCase() || "U";
 }
-
-export default function NavbarClient({ user }: Props) {
+export default function NavbarClient({ user: serverUser }: { user: SessionUser | null }) {
+  const { user, isLoading } = useAuthSync(serverUser);
+  const isAuthenticated = !!user;
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement | null>(null);
@@ -39,6 +43,14 @@ export default function NavbarClient({ user }: Props) {
   const handleLogout = () => {
     window.location.href = "/api/auth/logout";
   };
+
+  function handleClick() {
+    if (isAuthenticated) {
+      window.location.href = "/dashboard";
+      return;
+    }
+   window.location.href = "/api/auth/login"
+  }
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -83,7 +95,9 @@ export default function NavbarClient({ user }: Props) {
 
         {/* Desktop Auth */}
         <div className="hidden md:flex items-center gap-2 lg:gap-3">
-          {!user ? (
+          {isLoading ? (
+            <div className="w-20 h-8 bg-muted animate-pulse rounded" />
+          ) : !user ? (
             <>
               <Button onClick={handleLogin} variant="ghost" size="sm">
                 Log In
@@ -161,12 +175,17 @@ export default function NavbarClient({ user }: Props) {
             </a>
           ))}
 
-          {!user ? (
+          {isLoading ? (
+            <div className="flex flex-col gap-2">
+              <div className="w-20 h-8 bg-muted animate-pulse rounded" />
+              <div className="w-24 h-8 bg-muted animate-pulse rounded" />
+            </div>
+          ) : !user ? (
             <div className="flex flex-col gap-2">
               <Button variant="ghost" size="sm" onClick={handleLogin}>
                 Log In
               </Button>
-              <Button size="sm">Get Started</Button>
+              <Button onClick={handleClick} size="sm">Get Started</Button>
             </div>
           ) : (
             <div className="flex items-center justify-between rounded-xl border px-3 py-2">
