@@ -1,111 +1,94 @@
-import { scalekit } from "@/lib/scalekit";
+/**
+ * File: app/api/auth/callback/route.ts
+ * Match with Becodemy Video Version
+ */
+
+import { db } from "@/db/client";
+import { User as UserTable } from "@/db/schema"; // Video uses 'user' table from schema
+import { scalekit } from "@/lib/scalekit"; // Import matches video screenshot
+import { eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { createScalekitSessionCookieValue, scalekitSessionCookieName } from "@/lib/sessionCookie";
 
 export async function GET(req: NextRequest) {
-  const { searchParams, origin } = new URL(req.url);
-
-  console.log("Callback URL:", req.url);
-  console.log("Origin:", origin);
-
+  const { searchParams } = req.nextUrl;
   const code = searchParams.get("code");
+  const state = searchParams.get("state");
   const error = searchParams.get("error");
-  const errorDescription = searchParams.get("error_description");
+  const error_description = searchParams.get("error_description");
 
-  // Handle errors from Scalekit
+  // 1. Handle potential errors from ScaleKit
   if (error) {
-    console.error("Scalekit error:", error, errorDescription);
-    return NextResponse.redirect(`${origin}?error=${error}&description=${errorDescription}`);
+    return NextResponse.json({ error, error_description }, { status: 401 });
   }
 
-  if (!code) {
-    console.log("No code found, redirecting to home");
-    return NextResponse.redirect(origin);
+  const cookieStore = await cookies();
+  const savedState = cookieStore.get("sk_state")?.value;
+
+  // 2. State Validation (Security)
+  if (!code || !state || state !== savedState) {
+    return NextResponse.json({ error: "No code provided or state mismatch" }, { status: 400 });
   }
-
-  const baseUrl = origin;
-  const redirectUri = `${baseUrl}/api/auth/callback`;
-
-  console.log("Using redirect URI:", redirectUri);
 
   try {
-    // Exchange code for session
-    const session = await scalekit.authenticateWithCode(code, redirectUri);
-    
-    console.log("Session created successfully");
+    const redirectUri = process.env.SCALEKIT_REDIRECT_URI!;
 
+    // 3. Authenticate with ScaleKit
+    const authResult = await scalekit.authenticateWithCode(
+      code,
+      redirectUri,
+    );
 
-    // Redirect to home page after successful login (with toast flag)
-    const redirectTarget = new URL(baseUrl);
-    redirectTarget.searchParams.set("login", "success");
-    const response = NextResponse.redirect(redirectTarget);
+    const { user, idToken } = authResult;
 
+    // 4. Validate Token to get Claims (Organization ID)
+    const claims = await scalekit.validateToken(idToken);
+    const organizationId = 
+      (claims as any).organization_id || 
+      (claims as any).oid || 
+      null;
 
+    // 5. Database Logic: Check if user exists
+    const existingUser = await db
+      .select()
+      .from(UserTable)
+      .where(eq(UserTable.email, user.email));
 
-    // Store access token in cookie
-    const accessTokenMaxAge = 24 * 60 * 60; // 1 day
-    response.cookies.set("access_token", session.accessToken, {
+    // 6. If user doesn't exist, insert them
+    if (existingUser.length === 0) {
+      await db.insert(UserTable).values({
+        name: user?.name || 'Anonymous',
+        email: user.email,
+        organization_id: organizationId as string,
+        image: (user as any).picture || "", 
+      });
+    }
+
+    // 7. SUCCESS REDIRECT: Setup Response
+    const response = NextResponse.redirect(new URL("/dashboard", req.url));
+
+    const userSession={
+        name:user.name,
+        email:user.email,
+        organization_id:organizationId
+    }
+
+    // 8. Set Session Cookie _>help in retrive user information quickly without hitting db again
+    response.cookies.set("user_session", JSON.stringify(userSession), {
       httpOnly: true,
-      maxAge: accessTokenMaxAge,
       secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24 * 7, // 1 week
       path: "/",
       sameSite: "lax",
     });
 
-    // Fast-path auth cookie: lets middleware check auth without hitting Scalekit on every request.
-    // If the secret isn't configured, we simply skip setting it and fall back to slow validation.
-    try {
-      const fastCookieValue = createScalekitSessionCookieValue(session.accessToken, accessTokenMaxAge);
-      response.cookies.set(scalekitSessionCookieName, fastCookieValue, {
-        httpOnly: true,
-        maxAge: accessTokenMaxAge,
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        sameSite: "lax",
-      });
-    } catch {
-      // no-op
-    }
-
-    // Store refresh token if available
-    if (session.refreshToken) {
-      response.cookies.set("refresh_token", session.refreshToken, {
-        httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60, // 7 days
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        sameSite: "lax",
-      });
-    }
-
-    // Store ID token if available
-    if (session.idToken) {
-      response.cookies.set("idToken", session.idToken, {
-        httpOnly: true,
-        maxAge: 24 * 60 * 60, // 1 day
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        sameSite: "lax",
-      });
-    }
+    // 9. Cleanup
+    response.cookies.delete("sk_state");
 
     return response;
+
   } catch (error) {
-    console.error("Authentication error:", error);
-    return NextResponse.redirect(`${origin}?error=auth_failed`);
+    console.error("Callback Error:", error);
+    return NextResponse.json({ error: "Authentication failed" }, { status: 500 });
   }
-
 }
-
-
-
-  // Flow (now correct):
-// Scalekit → redirects to
-// /api/auth/callback?code=...
-// You extract code
-// Exchange → accessToken
-// Store in cookie 🍪
-// Redirect user to homepage
-
-
-

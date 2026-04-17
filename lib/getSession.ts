@@ -1,7 +1,14 @@
 import { cookies } from "next/headers";
-import { scalekit } from "./scalekit";
+type CookieSessionUser = {
+  name?: string;
+  email?: string;
+  organization_id?: string | null;
+};
 
 export type SessionUser = {
+  name?: string;
+  email?: string;
+  organization_id?: string | null;
   user?: {
     email?: string;
     userProfile?: {
@@ -12,28 +19,48 @@ export type SessionUser = {
   [key: string]: unknown;
 };
 
-export async function getSession(): Promise<SessionUser | null> {
+function splitName(name: string): { firstName?: string; lastName?: string } {
+  const trimmed = name.trim();
+  if (!trimmed) return {};
+  const [firstName, ...rest] = trimmed.split(/\s+/);
+  const lastName = rest.length ? rest.join(" ") : undefined;
+  return { firstName, lastName };
+}
+
+function parseUserSessionCookie(value: string | undefined): SessionUser | null {
+  if (!value) return null;
+
   try {
-    const sessionCookies = await cookies();
-    const token = sessionCookies.get("access_token")?.value;
+    const parsed = JSON.parse(value) as CookieSessionUser;
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!parsed.email || typeof parsed.email !== "string") return null;
 
-    if (!token) return null;
+    const name = typeof parsed.name === "string" ? parsed.name : undefined;
+    const organizationId =
+      typeof parsed.organization_id === "string" || parsed.organization_id === null
+        ? parsed.organization_id
+        : undefined;
+    const { firstName, lastName } = name ? splitName(name) : {};
 
-    const result = (await scalekit.validateToken(token)) as unknown;
-    if (
-      !result ||
-      typeof result !== "object" ||
-      !("sub" in result) ||
-      typeof (result as { sub?: unknown }).sub !== "string"
-    ) {
-      return null;
-    }
-
-    return await scalekit.user.getUser((result as { sub: string }).sub);
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : typeof error === "string" ? error : "Unknown error";
-    console.log("Session validation failed:", message);
+    return {
+      name,
+      email: parsed.email,
+      organization_id: organizationId,
+      user: {
+        email: parsed.email,
+        userProfile: {
+          firstName,
+          lastName,
+        },
+      },
+    };
+  } catch {
     return null;
   }
+}
+
+export async function getSession(): Promise<SessionUser | null> {
+  const sessionCookies = await cookies();
+  const userSessionCookie = sessionCookies.get("user_session")?.value;
+  return parseUserSessionCookie(userSessionCookie);
 }

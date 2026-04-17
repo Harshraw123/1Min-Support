@@ -7,16 +7,10 @@ import Image from "next/image";
 import type { SessionUser } from "@/lib/getSession";
 import { useAuthSync } from "@/hooks/useAuthSync";
 
-type Props = {
-  user: SessionUser | null;
-  isAuthenticated: boolean;
-};
-
-
 function getDisplayName(user: SessionUser | null): string {
   if (!user) return "";
-  const name = user.user?.userProfile?.firstName ?? "";
-  const email = user.user?.email ?? "";
+  const name = user.name ?? user.user?.userProfile?.firstName ?? "";
+  const email = user.email ?? user.user?.email ?? "";
   return name || email || "Profile";
 }
 
@@ -116,9 +110,9 @@ export default function NavbarClient({ user: serverUser }: { user: SessionUser |
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
                   {initial}
                 </span>
-                <span className="text-sm font-medium text-foreground max-w-40 truncate">
+                {/* <span className="text-sm font-medium text-foreground max-w-40 truncate">
                   {displayName}
-                </span>
+                </span> */}
               </button>
 
               {/* Dropdown */}
@@ -127,11 +121,11 @@ export default function NavbarClient({ user: serverUser }: { user: SessionUser |
                   
                   <div className="px-3 py-2">
                     <div className="text-sm font-semibold truncate">
-                      {user.user?.userProfile?.firstName || "Signed in"}
+                      {user.name || user.user?.userProfile?.firstName || "Signed in"}
                     </div>
-                    {user.user?.email && (
+                    {(user.email || user.user?.email) && (
                       <div className="text-xs text-muted-foreground truncate">
-                        {user.user.email}
+                        {user.email || user.user?.email}
                       </div>
                     )}
                   </div>
@@ -198,11 +192,11 @@ export default function NavbarClient({ user: serverUser }: { user: SessionUser |
                   <div className="text-sm font-semibold truncate">
                     {displayName}
                   </div>
-                  {user.user?.email && (
+                  {/* {user.user?.email && (
                     <div className="text-xs text-muted-foreground truncate">
                       {user.user.email}
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
 

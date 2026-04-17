@@ -21,7 +21,7 @@ const HeroSection = ({ isAuthenticated, serverUser }: HeroSectionProps) => {
       window.location.href = "/dashboard";
       return;
     }
-    window.location.href = "/api/auth/login"
+    window.location.href = "/"
   }
 
 
