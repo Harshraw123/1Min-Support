@@ -11,7 +11,7 @@ export async function GET() {
   // Agar idToken hai → proper SSO logout
   if (idToken) {
     const logoutUrl = scalekit.getLogoutUrl({
-      idToken,
+        idTokenHint:idToken,
       postLogoutRedirectUri,
     });
 
