@@ -1,10 +1,11 @@
+import InitialForm from "@/app/components/InitialForm";
 
 
 export const dynamic = "force-dynamic";
 
 const page = () => {
   return (
-    <div>this is dashbord</div>
+    <div><InitialForm/></div>
   )
 }
 
