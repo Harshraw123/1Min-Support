@@ -1,21 +1,17 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
-import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import AuthToastHandler from "./components/AuthToastHandler";
 
-
-// 🔹 Main UI font (clean + modern)
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
 });
 
-// 🔹 Mono font (for code, terminal style)
 const spaceMono = Space_Mono({
   subsets: ["latin"],
-  weight: ["400", "700"], // Space Mono needs weights
+  weight: ["400", "700"],
   variable: "--font-mono",
 });
 
@@ -34,19 +30,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn(
-        "h-full",
-        "antialiased",
-        spaceGrotesk.variable,
-        spaceMono.variable,
-        "font-sans"
-      )}
+      className={`${spaceGrotesk.variable} ${spaceMono.variable} h-full antialiased font-sans`}
     >
       <body className="min-h-full flex flex-col">
         {children}
         <AuthToastHandler />
         <Toaster />
-
       </body>
     </html>
   );

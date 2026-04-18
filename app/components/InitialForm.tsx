@@ -1,7 +1,6 @@
+'use client'
+
 import React, { useCallback, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, ArrowRight, Sparkles, Link2 } from "lucide-react";
 
 interface FormData {
@@ -111,11 +110,14 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
   const currentError = step === 1 ? errors.businessName : step === 2 ? errors.websiteUrl : undefined;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <div 
+    className="fixed inset-0 z-50 flex flex-col bg-background"
+    suppressHydrationWarning
+    >
       {/* Top progress bar */}
-      <div className="h-1 w-full bg-secondary">
+      <div className="h-1 w-full bg-muted">
         <div
-          className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-700 ease-out"
+          className="h-full bg-gradient-to-r from-primary to-brand-orange transition-all duration-700 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -126,13 +128,13 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
           type="button"
           onClick={handleBack}
           disabled={step === 1}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:invisible"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:invisible"
           aria-label="Back"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-secondary-foreground">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <div className="hero-badge">
+          <Sparkles className="h-3.5 w-3.5" />
           Step {step} of 3
         </div>
         <div className="h-9 w-9" />
@@ -148,17 +150,17 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
 
           <div className="relative mt-12">
             {step === 3 ? (
-              <Textarea
+              <textarea
                 placeholder={current.placeholder}
                 value={currentValue}
                 onChange={(e) => updateFormData(currentField, e.target.value)}
                 rows={3}
                 maxLength={1000}
                 autoFocus
-                className="resize-none rounded-none border-0 border-b-2 border-border bg-transparent px-0 py-3 text-xl shadow-none focus-visible:border-primary focus-visible:ring-0 md:text-2xl"
+                className="w-full resize-none border-0 border-b-2 border-border bg-transparent px-0 py-3 text-xl text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary md:text-2xl"
               />
             ) : (
-              <Input
+              <input
                 type={step === 2 ? "url" : "text"}
                 placeholder={current.placeholder}
                 value={currentValue}
@@ -171,10 +173,10 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
                 }}
                 autoFocus
                 maxLength={step === 1 ? 100 : 255}
-                className={`h-auto rounded-none border-0 border-b-2 bg-transparent px-0 py-3 text-xl shadow-none focus-visible:ring-0 md:text-2xl ${
+                className={`w-full border-0 border-b-2 bg-transparent px-0 py-3 text-xl text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors md:text-2xl ${
                   currentError
-                    ? "border-destructive focus-visible:border-destructive"
-                    : "border-border focus-visible:border-primary"
+                    ? "border-destructive focus:border-destructive"
+                    : "border-border focus:border-primary"
                 }`}
               />
             )}
@@ -194,19 +196,21 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
       {/* Footer */}
       <div className="flex items-center justify-between gap-4 border-t border-border bg-background/80 px-6 py-5 backdrop-blur md:px-10">
         <p className="hidden text-xs text-muted-foreground sm:block">
-          Press <kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-semibold">Enter</kbd>{" "}
+          Press{" "}
+          <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground">
+            Enter
+          </kbd>{" "}
           to continue
         </p>
-        <Button
+        <button
           type="button"
           onClick={handleNext}
           disabled={isSubmitting}
-          size="lg"
-          className="ml-auto rounded-full px-8 shadow-md hover:shadow-lg"
+          className="ml-auto inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:opacity-90 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? "Setting up..." : step === 3 ? "Submit" : "Continue"}
           {!isSubmitting && (step === 3 ? <Sparkles className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />)}
-        </Button>
+        </button>
       </div>
     </div>
   );
