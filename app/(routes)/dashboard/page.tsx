@@ -1,11 +1,11 @@
-
-
-export const dynamic = "force-dynamic";
+import InitialFormClient from "@/app/components/InitialFormClient";
 
 const page = () => {
   return (
-    <div>this is dashbord</div>
-  )
-}
+    <div>
+      <InitialFormClient />
+    </div>
+  );
+};
 
-export default page
+export default page;
