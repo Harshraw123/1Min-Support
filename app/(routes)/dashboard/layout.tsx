@@ -24,11 +24,8 @@ export default async function DashboardLayout({
           <div className="flex min-h-screen w-full">
             <AppSidebar />
             <SidebarInset className="flex-1">
-              <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur md:hidden">
-                <SidebarTrigger />
-                <span className="text-sm font-medium text-muted-foreground">
-                  Dashboard
-                </span>
+              <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur">
+                <SidebarTrigger className="-ml-1" />
               </header>
               <main className="flex-1">{children}</main>
             </SidebarInset>

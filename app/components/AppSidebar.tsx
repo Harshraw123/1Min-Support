@@ -109,7 +109,7 @@ export function AppSidebar() {
       <Image src="/logo.png" alt="Logo" width={36} height={36} className="object-contain" />
     </div>
     {!collapsed && (
-      <div className="flex flex-col leading-tight animate-fade-in">
+      <div className="flex flex-col leading-tight ">
         <span className="text-sm font-semibold text-sidebar-foreground">
           1Min Support
         </span>
@@ -145,9 +145,9 @@ export function AppSidebar() {
 
         {/* Upgrade card */}
         {!collapsed && (
-          <div className="mx-3 mt-4 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-brand-orange/10 p-4 animate-fade-in">
+          <div className="mx-3 mt-4 rounded-xl border  p-4 ">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
+              <Sparkles className="h-4 w-4" />
               <span className="text-xs font-semibold text-foreground">
                 Upgrade to Pro
               </span>
@@ -155,7 +155,7 @@ export function AppSidebar() {
             <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
               Unlock unlimited AI conversations & advanced analytics.
             </p>
-            <button className="mt-3 w-full rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90">
+            <button className="mt-3 hover:cursor-pointer w-full border-2 rounded-md y px-3 py-1.5 text-xs font-semibold shadow-sm">
               Upgrade now
             </button>
           </div>
@@ -171,7 +171,7 @@ export function AppSidebar() {
             </AvatarFallback>
           </Avatar>
           {!collapsed && (
-            <div className="flex flex-1 items-center justify-between animate-fade-in min-w-0">
+            <div className="flex flex-1 items-center justify-between min-w-0">
               <div className="flex flex-col leading-tight min-w-0">
                 <span className="text-xs font-semibold text-sidebar-foreground truncate">
                   {metaData?.business_name ?? "Your Account"}
