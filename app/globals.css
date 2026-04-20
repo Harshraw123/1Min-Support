@@ -94,6 +94,25 @@
     animation: fade-in 0.8s ease-out forwards;
   }
 }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner-ring {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #e5e7eb;
+  border-top-color: #111827;
+  animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.spinner-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
 
 /* Global override for any remaining blue colors to image purple */
 [class*="bg-blue-"],
