@@ -29,3 +29,15 @@ export const User = pgTable("user", {
 // Agar aap sirf "now()" likhenge, toh Drizzle use ek normal text (string) samjhega. Lekin jab aap sqlnow()`` likhte hain, toh Drizzle ko pata chalta hai ki:
 
 // "Bhai, ye koi text nahi hai, ye Postgres ka order hai jo seedha database par chalana hai."
+
+
+export const metadata = pgTable("metadata", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  user_email: text("user_email").notNull(),
+  business_name: text("business_name").notNull(),
+  website_url: text("website_url").notNull(),
+  external_links: text("external_links"),
+  created_at: text("created_at").default(sql`now()`),
+});
