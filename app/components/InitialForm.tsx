@@ -181,9 +181,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
       
       const result = await response.json();
       console.log("Metadata saved successfully:", result);
-      
-      // Redirect to dashboard instead of reload
-      window.location.href = "/dashboard";
+      return result;
     } catch (error) {
       console.error("Error saving metadata:", error);
       throw error; // Re-throw to handle in handleNext
