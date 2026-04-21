@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import KnowledgeTabs from "./KnowledgeTabs";
@@ -10,23 +10,44 @@ import UploadForm from "./forms/UploadForm";
 import { normalizeUrl, validateUrl } from "@/lib/helpers";
 import { KnowledgeType } from "@/@types/types";
 
+const colorMap: Record<string, { bg: string; text: string }> = {
+  indigo: { bg: "bg-[#534AB7]", text: "text-white" },
+  emerald: { bg: "bg-[#0F6E56]", text: "text-white" },
+  amber: { bg: "bg-[#854F0B]", text: "text-white" },
+};
+
+const tabColorMap: Record<KnowledgeType, string> = {
+  website: "indigo",
+  upload: "emerald", 
+  text: "amber",
+};
+
 export default function AddKnowledgeModal({
   isOpen,
   setIsOpen,
   onSubmit,
   existingSources = [],
+  defaultTab = "website",
 }: {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
   onSubmit: (data: any) => void;
   existingSources?: { source_url: string }[];
+  defaultTab?: KnowledgeType;
 }) {
-  const [type, setType] = useState<KnowledgeType>("website");
+  const [type, setType] = useState<KnowledgeType>(defaultTab);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setType(defaultTab);
+      resetForm();
+    }
+  }, [defaultTab, isOpen]);
 
   const resetForm = () => {
     setUrl("");
@@ -83,7 +104,7 @@ export default function AddKnowledgeModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="p-0 gap-0 border-0 shadow-2xl rounded-[18px] max-w-[460px] w-full">
+      <DialogContent className="p-0 gap-0 border-0 shadow-2xl rounded-[18px] max-w-[460px] w-full" showCloseButton={false}>
         {/* Header */}
         <div className="flex items-start justify-between px-7 pt-7 pb-5">
           <div>
@@ -144,7 +165,7 @@ export default function AddKnowledgeModal({
             </button>
             <button
               onClick={handleSubmit}
-              className="h-9 px-5 rounded-lg bg-blue-600 hover:bg-blue-700 text-[13px] font-medium text-white transition-colors"
+              className={`h-9 px-5 rounded-lg ${colorMap[tabColorMap[type]].bg} hover:opacity-90 text-[13px] font-medium ${colorMap[tabColorMap[type]].text} transition-colors`}
             >
               Add source
             </button>

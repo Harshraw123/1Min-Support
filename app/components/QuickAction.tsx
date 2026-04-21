@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Globe, FileText, Type } from "lucide-react";
-import { KnowledgeType } from "./AddKnowledgeModal";
+import { KnowledgeType } from "@/@types/types";
 
 interface Props {
   onOpenModal: (tab: KnowledgeType) => void;

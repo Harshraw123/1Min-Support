@@ -52,7 +52,7 @@ export default function UploadForm({
           <div className="text-center">
             <p className="text-[13px] text-muted-foreground">
               Drop a file here or{" "}
-              <span className="text-blue-600 font-medium">browse</span>
+              <span className="text-primary font-medium">browse</span>
             </p>
             <p className="text-[11px] text-muted-foreground/60 mt-0.5">
               PDF, DOCX, TXT up to 10 MB

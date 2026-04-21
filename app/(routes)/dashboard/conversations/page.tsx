@@ -50,7 +50,7 @@ export default function ConversationsPage() {
         
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="h-2 w-2 rounded-full bg-purple-500"></div>
+            <div className="h-2 w-2 rounded-full bg-purple-600"></div>
             <span className="text-sm font-medium">All Time</span>
           </div>
           <p className="text-2xl font-bold">0</p>

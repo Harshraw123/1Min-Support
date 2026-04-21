@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 import AuthToastHandler from "./components/AuthToastHandler";
 
 const spaceGrotesk = Space_Grotesk({
@@ -33,9 +34,16 @@ export default function RootLayout({
       className={`${spaceGrotesk.variable} ${spaceMono.variable} h-full antialiased font-sans`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <AuthToastHandler />
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <AuthToastHandler />
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
