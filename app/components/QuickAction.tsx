@@ -2,11 +2,14 @@
 
 import React from "react";
 import { Globe, FileText, Type } from "lucide-react";
-import { KnowledgeType } from "./AddKnowledgeModal";
+import { KnowledgeType } from "@/@types/types";
 
 interface Props {
   onOpenModal: (tab: KnowledgeType) => void;
 }
+
+//ye 3 card hai jo display ho rhe'
+
 
 const QuickActions = ({ onOpenModal }: Props) => {
   const actions: Array<{
@@ -46,20 +49,26 @@ const QuickActions = ({ onOpenModal }: Props) => {
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-1">
       {actions.map((action) => {
         const colors = colorMap[action.colorClass];
+
         return (
           <button
             key={action.id}
             onClick={() => onOpenModal(action.id)}
-            className="flex flex-col items-center gap-3.5 text-center p-6 rounded-xl border border-white/10 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-150 cursor-pointer"
+            className="flex flex-col items-center gap-3.5 text-center p-6 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-150 cursor-pointer shadow-sm"
           >
-            <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${colors.bg} ${colors.text}`}>
+            {/* Icon */}
+            <div
+              className={`w-11 h-11 rounded-full flex items-center justify-center ${colors.bg} ${colors.text}`}
+            >
               {action.icon}
             </div>
+
+            {/* Text */}
             <div>
-              <p className="text-sm font-medium text-zinc-900 dark:text-white mb-1">
+              <p className="text-sm font-semibold text-black mb-1">
                 {action.title}
               </p>
               <p className="text-xs text-zinc-500 leading-relaxed">

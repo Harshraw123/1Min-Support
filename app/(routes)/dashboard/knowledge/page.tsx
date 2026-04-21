@@ -1,9 +1,11 @@
 "use client";
 
-import AddKnowledgeModal, {
-  KnowledgeSubmitPayload,
-  KnowledgeType,
-} from "@/app/components/AddKnowledgeModal";
+import { KnowledgeSubmitPayload, KnowledgeType } from "@/@types/types";
+import AddKnowledgeModal from "@/app/components/AddKnowledgeModal";
+
+
+
+
 import QuickAction from "@/app/components/QuickAction";
 import React, { useState } from "react";
 
