@@ -12,3 +12,12 @@ interface KnowledgeSource {
   meta_data: string | null;
   created_at: string | null;
 }
+export type KnowledgeType = "website" | "text" | "upload";
+
+export interface KnowledgeSubmitPayload {
+  type: KnowledgeType;
+  websiteUrl?: string;
+  textTitle?: string;
+  textContent?: string;
+  file?: File | null;
+}
