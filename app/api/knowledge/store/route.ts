@@ -12,6 +12,14 @@ const groq = new Groq({
 
 const MODEL_NAME = "llama-3.3-70b-versatile";
 
+function buildMetaData(meta: Record<string, unknown>) {
+  try {
+    return JSON.stringify(meta);
+  } catch {
+    return JSON.stringify({ note: "meta_data serialization failed" });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getSession();
@@ -80,8 +88,19 @@ ${rawText}`;
           title: file.name || "Uploaded File",
           content: formattedContent,
           type: "upload",
+          status: "active",
           user_email: user.email,
           workspace_id: workspaceId,
+          meta_data: buildMetaData({
+            flow: "upload",
+            file: {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+            },
+            model: MODEL_NAME,
+            createdAt: new Date().toISOString(),
+          }),
         })
         .returning();
 
@@ -157,9 +176,21 @@ ${extracted.structured}`;
           title: finalTitle || finalUrl,
           content: formattedContent,
           type: "website",
+          status: "active",
           source_url: finalUrl,
           user_email: user.email,
           workspace_id: workspaceId,
+          meta_data: buildMetaData({
+            flow: "website",
+            url: finalUrl,
+            scrapeProvider: "scrape.do",
+            extracted: {
+              // keep small; raw html is intentionally not stored
+              structuredLength: extracted.structured?.length ?? null,
+            },
+            model: MODEL_NAME,
+            createdAt: new Date().toISOString(),
+          }),
         })
         .returning();
 
@@ -185,8 +216,18 @@ ${extracted.structured}`;
           title: finalTitle,
           content: formattedContent,
           type: "text",
+          status: "active",
           user_email: user.email,
           workspace_id: workspaceId,
+          meta_data: buildMetaData({
+            flow: "text",
+            input: {
+              titleLength: finalTitle.length,
+              contentLength: finalContent.length,
+            },
+            model: MODEL_NAME,
+            createdAt: new Date().toISOString(),
+          }),
         })
         .returning();
 

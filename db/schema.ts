@@ -68,9 +68,13 @@ export const knowledge = pgTable("knowledge", {
   // 'website' | 'text' | 'upload'
   type: text("type").notNull(),
 
+  status:text('status').notNull().default('active'),
+
   
   // Used for duplicate URL checking in the modal
   source_url: text("source_url"),
+
+  meta_data:text('meta_data'),
 
 
   created_at: text("created_at").default(sql`now()`),
