@@ -31,7 +31,7 @@ export default function AddKnowledgeModal({
 }: {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any) => void | Promise<void>;
   existingSources?: { source_url: string }[];
   defaultTab?: KnowledgeType;
 }) {
@@ -41,6 +41,7 @@ export default function AddKnowledgeModal({
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -59,19 +60,87 @@ export default function AddKnowledgeModal({
 
   const handleTabChange = (t: KnowledgeType) => {
     setType(t);
-    setError(""); // ✅ Fix: clear error on tab switch
+    setError(""); // Fix: clear error on tab switch
   };
 
   const handleClose = () => {
+    if (isSubmitting) return;
     resetForm();
     setIsOpen(false);
   };
 
-  const handleSubmit = () => {
+  // handle the submitted form data and connectivity with backend
+  const handleImportSource = async (data: any) => {
+    let response: Response | undefined;
+
+    // ✅ 1. WEBSITE FLOW (scrape → store)
+    if (data.type === "website") {
+      const scrapeRes = await fetch("/api/knowledge/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: data.websiteUrl }),
+      });
+
+      const scrapeData = await scrapeRes.json().catch(() => ({}));
+
+      if (!scrapeRes.ok) {
+        throw new Error(scrapeData.message || "Failed to scrape website");
+      }
+
+      response = await fetch("/api/knowledge/store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "website",
+          source_url: data.websiteUrl,
+          content: scrapeData.content,
+        }),
+      });
+    }
+
+    // ✅ 2. TEXT FLOW (direct store)
+    else if (data.type === "text") {
+      response = await fetch("/api/knowledge/store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "text",
+          title: data.textTitle,
+          content: data.textContent,
+        }),
+      });
+    }
+
+    // ✅ 3. FILE UPLOAD FLOW (FormData)
+    else if (data.type === "upload" && data.file) {
+      const formData = new FormData();
+      formData.append("file", data.file);
+
+      response = await fetch("/api/knowledge/upload", {
+        method: "POST",
+        body: formData,
+      });
+    }
+
+    if (!response) {
+      throw new Error("Unsupported knowledge type");
+    }
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result?.message || "Something went wrong");
+    }
+
+    return result;
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
     if (type === "website") {
       if (!validateUrl(url)) {
         setError("Please enter a valid URL");
-        return; // ✅ Fix: explicit return, not return setError(...)
+        return; // Fix: explicit return, not return setError(...)
       }
       const normalized = normalizeUrl(url);
       const exists = existingSources.some(
@@ -81,25 +150,62 @@ export default function AddKnowledgeModal({
         setError("This source has already been added");
         return;
       }
-      onSubmit({ type, websiteUrl: normalized });
+      const payload = { type, websiteUrl: normalized };
+      setIsSubmitting(true);
+      setError("");
+      try {
+        await handleImportSource(payload);
+        await onSubmit(payload);
+        resetForm();
+        setIsOpen(false);
+      } catch (e: any) {
+        setError(e?.message || "Failed to import source");
+      } finally {
+        setIsSubmitting(false);
+      }
     } else if (type === "text") {
-      // ✅ Fix: validate text fields
+
       if (!title.trim() || !content.trim()) {
         setError("Title and content are both required");
         return;
       }
-      onSubmit({ type, textTitle: title.trim(), textContent: content.trim() });
+      const payload = {
+        type,
+        textTitle: title.trim(),
+        textContent: content.trim(),
+      };
+      setIsSubmitting(true);
+      setError("");
+      try {
+        await handleImportSource(payload);
+        await onSubmit(payload);
+        resetForm();
+        setIsOpen(false);
+      } catch (e: any) {
+        setError(e?.message || "Failed to import source");
+      } finally {
+        setIsSubmitting(false);
+      }
     } else if (type === "upload") {
-      // ✅ Fix: validate file
+
       if (!file) {
         setError("Please select a file to upload");
         return;
       }
-      onSubmit({ type, file });
+      const payload = { type, file };
+      setIsSubmitting(true);
+      setError("");
+      try {
+        await handleImportSource(payload);
+        await onSubmit(payload);
+        resetForm();
+        setIsOpen(false);
+      } catch (e: any) {
+        setError(e?.message || "Failed to import source");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
-
-    resetForm(); 
-    setIsOpen(false);
   };
 
   return (
@@ -159,15 +265,17 @@ export default function AddKnowledgeModal({
           <div className="flex justify-end gap-2">
             <button
               onClick={handleClose}
+              disabled={isSubmitting}
               className="h-9 px-4 rounded-lg border border-border/50 text-[13px] font-medium text-muted-foreground hover:bg-muted transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
-              className={`h-9 px-5 rounded-lg ${colorMap[tabColorMap[type]].bg} hover:opacity-90 text-[13px] font-medium ${colorMap[tabColorMap[type]].text} transition-colors`}
+              disabled={isSubmitting}
+              className={`h-9 px-5 rounded-lg ${colorMap[tabColorMap[type]].bg} hover:opacity-90 text-[13px] font-medium ${colorMap[tabColorMap[type]].text} transition-colors disabled:opacity-60 disabled:cursor-not-allowed`}
             >
-              Add source
+              {isSubmitting ? "Adding..." : "Add source"}
             </button>
           </div>
         </div>
