@@ -20,7 +20,7 @@ export default function WebsiteForm({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="https://example.com"
-        className={error ? "border-destructive focus-visible:ring-destructive/20" : ""}
+        className={error ? "border-destructive " : ""}
       />
       {error && (
         <p className="text-[12px] text-destructive flex items-center gap-1">

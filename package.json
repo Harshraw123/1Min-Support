@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^1.1.0",
     "@phosphor-icons/react": "^2.1.10",
     "@scalekit-sdk/node": "^2.5.1",
@@ -21,6 +22,7 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "embla-carousel-react": "^8.6.0",
+    "groq-sdk": "^1.1.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^1.7.0",
     "mongodb": "^7.1.1",

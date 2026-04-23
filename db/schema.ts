@@ -41,3 +41,37 @@ export const metadata = pgTable("metadata", {
   external_links: text("external_links"),
   created_at: text("created_at").default(sql`now()`),
 });
+
+
+export const knowledge = pgTable("knowledge", {
+  
+  // Unique identifier — same pattern as your User & metadata tables
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+
+
+  user_email: text("user_email").notNull(),
+
+
+  workspace_id: text("workspace_id").notNull(),
+
+  // Display name of the knowledge source
+  // e.g. "Company Pricing Page" or the filename
+  title: text("title").notNull(),
+
+  // Summarized markdown content (processed by Gemini model)
+
+  content: text("content").notNull(),
+
+  // Type of knowledge source
+  // 'website' | 'text' | 'upload'
+  type: text("type").notNull(),
+
+  
+  // Used for duplicate URL checking in the modal
+  source_url: text("source_url"),
+
+
+  created_at: text("created_at").default(sql`now()`),
+});

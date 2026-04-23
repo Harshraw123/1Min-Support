@@ -38,6 +38,7 @@ export default function TextForm({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           className="resize-none min-h-[96px]"
+          required    
         />
       </div>
       {error && (
