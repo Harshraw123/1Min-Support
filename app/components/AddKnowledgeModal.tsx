@@ -2,13 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import KnowledgeTabs from "./KnowledgeTabs";
 import WebsiteForm from "./forms/WebsiteForm";
 import TextForm from "./forms/TextForm";
 import UploadForm from "./forms/UploadForm";
 import { normalizeUrl, validateUrl } from "@/lib/helpers";
-import { KnowledgeType } from "@/@types/types";
+import { KnowledgeSubmitPayload, KnowledgeType } from "@/@types/types";
 
 const colorMap: Record<string, { bg: string; text: string }> = {
   indigo: { bg: "bg-[#534AB7]", text: "text-white" },
@@ -31,7 +36,7 @@ export default function AddKnowledgeModal({
 }: {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
-  onSubmit: (data: any) => void | Promise<void>;
+  onSubmit: (data: KnowledgeSubmitPayload) => void | Promise<void>;
   existingSources?: { source_url: string }[];
   defaultTab?: KnowledgeType;
 }) {
@@ -69,31 +74,24 @@ export default function AddKnowledgeModal({
     setIsOpen(false);
   };
 
+  const getErrorMessage = (e: unknown) => {
+    if (e instanceof Error) return e.message;
+    if (typeof e === "string") return e;
+    return "Failed to import source";
+  };
+
   // handle the submitted form data and connectivity with backend
-  const handleImportSource = async (data: any) => {
+  const handleImportSource = async (data: KnowledgeSubmitPayload) => {
     let response: Response | undefined;
 
     // ✅ 1. WEBSITE FLOW (scrape → store)
     if (data.type === "website") {
-      const scrapeRes = await fetch("/api/knowledge/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: data.websiteUrl }),
-      });
-
-      const scrapeData = await scrapeRes.json().catch(() => ({}));
-
-      if (!scrapeRes.ok) {
-        throw new Error(scrapeData.message || "Failed to scrape website");
-      }
-
       response = await fetch("/api/knowledge/store", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "website",
-          source_url: data.websiteUrl,
-          content: scrapeData.content,
+          websiteUrl: data.websiteUrl,
         }),
       });
     }
@@ -116,7 +114,7 @@ export default function AddKnowledgeModal({
       const formData = new FormData();
       formData.append("file", data.file);
 
-      response = await fetch("/api/knowledge/upload", {
+      response = await fetch("/api/knowledge/store", {
         method: "POST",
         body: formData,
       });
@@ -150,7 +148,7 @@ export default function AddKnowledgeModal({
         setError("This source has already been added");
         return;
       }
-      const payload = { type, websiteUrl: normalized };
+      const payload: KnowledgeSubmitPayload = { type, websiteUrl: normalized };
       setIsSubmitting(true);
       setError("");
       try {
@@ -158,8 +156,8 @@ export default function AddKnowledgeModal({
         await onSubmit(payload);
         resetForm();
         setIsOpen(false);
-      } catch (e: any) {
-        setError(e?.message || "Failed to import source");
+      } catch (e: unknown) {
+        setError(getErrorMessage(e));
       } finally {
         setIsSubmitting(false);
       }
@@ -169,7 +167,7 @@ export default function AddKnowledgeModal({
         setError("Title and content are both required");
         return;
       }
-      const payload = {
+      const payload: KnowledgeSubmitPayload = {
         type,
         textTitle: title.trim(),
         textContent: content.trim(),
@@ -181,8 +179,8 @@ export default function AddKnowledgeModal({
         await onSubmit(payload);
         resetForm();
         setIsOpen(false);
-      } catch (e: any) {
-        setError(e?.message || "Failed to import source");
+      } catch (e: unknown) {
+        setError(getErrorMessage(e));
       } finally {
         setIsSubmitting(false);
       }
@@ -192,7 +190,7 @@ export default function AddKnowledgeModal({
         setError("Please select a file to upload");
         return;
       }
-      const payload = { type, file };
+      const payload: KnowledgeSubmitPayload = { type, file };
       setIsSubmitting(true);
       setError("");
       try {
@@ -200,8 +198,8 @@ export default function AddKnowledgeModal({
         await onSubmit(payload);
         resetForm();
         setIsOpen(false);
-      } catch (e: any) {
-        setError(e?.message || "Failed to import source");
+      } catch (e: unknown) {
+        setError(getErrorMessage(e));
       } finally {
         setIsSubmitting(false);
       }
@@ -214,12 +212,16 @@ export default function AddKnowledgeModal({
         {/* Header */}
         <div className="flex items-start justify-between px-7 pt-7 pb-5">
           <div>
-            <h2 className="text-[17px] font-medium text-foreground leading-snug">
-              Add knowledge source
-            </h2>
-            <p className="text-[13px] text-muted-foreground mt-0.5">
-              Connect a website, paste text, or upload a file
-            </p>
+            <DialogTitle asChild>
+              <h2 className="text-[17px] font-medium text-foreground leading-snug">
+                Add knowledge source
+              </h2>
+            </DialogTitle>
+            <DialogDescription asChild>
+              <p className="text-[13px] text-muted-foreground mt-0.5">
+                Connect a website, paste text, or upload a file
+              </p>
+            </DialogDescription>
           </div>
           <button
             onClick={handleClose}
