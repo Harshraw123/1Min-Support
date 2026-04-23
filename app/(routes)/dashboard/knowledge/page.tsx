@@ -1,27 +1,59 @@
 "use client";
 
-import { KnowledgeSubmitPayload, KnowledgeType } from "@/@types/types";
+import { KnowledgeType } from "@/@types/types";
 import AddKnowledgeModal from "@/app/components/AddKnowledgeModal";
-
-
-
-
+import KnowledgeTable from "@/app/components/KnowledgeTable";
 import QuickAction from "@/app/components/QuickAction";
 import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+
+type KnowledgeRow = {
+  id: string;
+  user_email: string;
+  workspace_id: string;
+  title: string;
+  content: string;
+  type: "website" | "text" | "upload" | string;
+  status: string;
+  source_url: string | null;
+  meta_data: string | null;
+  created_at: string | null;
+};
 
 
 const Page = () => {
   const [defaultTab, setDefaultTab] = useState<KnowledgeType>("website");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [sources, setSources] = useState<KnowledgeRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const openModal = (tab: KnowledgeType) => {
     setDefaultTab(tab);
     setIsAddOpen(true);
   };
 
-  const handleKnowledgeSubmit = (payload: KnowledgeSubmitPayload) => {
-    // Keeping this as a UI flow hook only; persistence can be added later.
-    console.log("Knowledge source ready to store:", payload);
+  const fetchSources = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/knowledge/fetch", { method: "GET" });
+      if (!res.ok) throw new Error("Failed to fetch sources");
+      const data = (await res.json()) as KnowledgeRow[];
+      setSources(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setSources([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    void fetchSources();
+  }, []);
+
+  const handleKnowledgeSubmit = async () => {
+    // Modal already persists; refresh UI after successful submit.
+    await fetchSources();
   };
 
   return (
@@ -36,17 +68,18 @@ const Page = () => {
           </p>
         </div>
         
-        <button
+        <Button
           onClick={() => openModal("website")}
-          className=" text-white bg-black  px-4 py-2 rounded-lg text-sm font-medium hover:cursor-pointer"
+          className="rounded-lg"
         >
           + Add Knowledge
-        </button>
+        </Button>
       </div>
 
       <div className="grid gap-6">
         {/* Quick Actions Section */}
         <QuickAction onOpenModal={openModal} />
+        <KnowledgeTable sources={sources} isLoading={isLoading} />
         
         {/* Knowledge Source List / Content would follow here */}
       </div>
@@ -57,6 +90,9 @@ const Page = () => {
         setIsOpen={setIsAddOpen} 
         defaultTab={defaultTab} 
         onSubmit={handleKnowledgeSubmit}
+        existingSources={sources
+          .filter((s) => Boolean(s.source_url))
+          .map((s) => ({ source_url: s.source_url! }))}
       />
     </div>
   );

@@ -30,14 +30,16 @@ const HeroSection = ({ isAuthenticated, serverUser }: HeroSectionProps) => {
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image */}
       
-      <Image
-        src="/hero-bg.avif"
-        alt="AI customer support interface background"
-        fill
-        priority
-        sizes="100vw"
-        className="absolute inset-0 h-full w-full object-cover"
-      />
+      <video
+  autoPlay
+  muted
+  loop
+  playsInline
+  preload="auto"
+  className="absolute inset-0 h-full w-full object-cover"
+>
+  <source src="/hero.mp4" type="video/mp4" />
+</video>
       <div className="absolute inset-0 bg-linear-to-b from-primary/25 via-background/50 to-background" />
 
       <div className="container mx-auto px-6 pt-24 pb-16 relative z-10">
