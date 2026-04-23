@@ -13,7 +13,7 @@ type KnowledgeRow = {
   workspace_id: string;
   title: string;
   content: string;
-  type: "website" | "text" | "upload" | string;
+  type: string;
   status: string;
   source_url: string | null;
   meta_data: string | null;
