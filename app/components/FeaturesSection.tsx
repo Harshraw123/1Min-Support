@@ -15,9 +15,8 @@ const FeaturesSection = () => {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section id="features" className="py-24 sm:py-32 relative overflow-hidden">
-      <div className="pointer-events-none absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-0 w-[420px] h-[420px] rounded-full bg-accent/10 blur-3xl" />
+    <section id="features" className="py-24 sm:py-32 relative overflow-hidden bg-white/40 backdrop-blur-sm">
+
 
       <div className="container mx-auto px-6 max-w-7xl">
         <div
@@ -74,7 +73,7 @@ const FeaturesSection = () => {
             {/* central robot image */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[68%] sm:w-[64%] aspect-square flex items-center justify-center">
               <Image
-                src="/logo.jpg"
+                src="/logo.avif"
                 alt="OneMinute Support AI assistant robot mascot"
                 fill
                 sizes="(min-width: 640px) 360px, 280px"
@@ -92,7 +91,7 @@ const FeaturesSection = () => {
                 <p className="text-xs font-semibold text-foreground">12k+ reviews</p>
                 <div className="flex gap-0.5 mt-0.5">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} size={11} className="text-accent fill-accent" />
+                    <Star key={i} size={11} className="text-accent fill-amber-300" />
                   ))}
                 </div>
               </div>

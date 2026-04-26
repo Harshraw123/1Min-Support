@@ -43,10 +43,16 @@ export async function GET(req: NextRequest) {
 
     // 4. Validate Token to get Claims (Organization ID)
     const claims = await scalekit.validateToken(idToken);
-    const organizationId = 
-      (claims as any).organization_id || 
-      (claims as any).oid || 
-      null;
+    const claimsObj: Record<string, unknown> =
+      claims && typeof claims === "object" ? (claims as Record<string, unknown>) : {};
+    const organizationId =
+      typeof claimsObj.organization_id === "string"
+        ? claimsObj.organization_id
+        : typeof claimsObj.oid === "string"
+          ? claimsObj.oid
+          : null;
+    const normalizedOrganizationId =
+      typeof organizationId === "string" && organizationId.trim() ? organizationId.trim() : "personal";
 
     // 5. Database Logic: Check if user exists
     const existingUser = await db
@@ -56,11 +62,13 @@ export async function GET(req: NextRequest) {
 
     // 6. If user doesn't exist, insert them
     if (existingUser.length === 0) {
+      const pictureCandidate = (user as unknown as { picture?: unknown })?.picture;
+      const picture = typeof pictureCandidate === "string" ? pictureCandidate : "";
       await db.insert(UserTable).values({
         name: user?.name || 'Anonymous',
         email: user.email,
-        organization_id: organizationId as string,
-        image: (user as any).picture || "", 
+        organization_id: normalizedOrganizationId,
+        image: picture,
       });
     }
 
@@ -70,11 +78,20 @@ export async function GET(req: NextRequest) {
     const userSession={
         name:user.name,
         email:user.email,
-        organization_id:organizationId
+        organization_id: normalizedOrganizationId,
     }
 
     // 8. Set Session Cookie _>help in retrive user information quickly without hitting db again
     response.cookies.set("user_session", JSON.stringify(userSession), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+      path: "/",
+      sameSite: "lax",
+    });
+
+    // Used only for SSO logout (idTokenHint). Keep it httpOnly.
+    response.cookies.set("sk_id_token", idToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24 * 7, // 1 week

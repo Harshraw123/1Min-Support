@@ -21,12 +21,12 @@
   --color-destructive: oklch(0.577 0.245 27.325);
   --color-border: oklch(0.922 0.006 286.286);
   --color-input: oklch(0.922 0.006 286.286);
-  --color-ring: oklch(0.45 0.22 290);
-  --color-sidebar: oklch(0.985 0 0);
+  --color-ring: transparent;
+  --color-sidebar: oklch(0.99 0.01 286);
   --color-sidebar-foreground: oklch(0.208 0.042 265.755);
   --color-sidebar-primary: oklch(0.45 0.22 290);
   --color-sidebar-primary-foreground: oklch(0.985 0.002 286);
-  --color-sidebar-accent: oklch(0.97 0.02 285);
+  --color-sidebar-accent: oklch(0.968 0.007 286.375);
   --color-sidebar-accent-foreground: oklch(0.278 0.026 256.848);
   --color-sidebar-border: oklch(0.922 0.006 286.286);
   --color-sidebar-ring: oklch(0.45 0.22 290);

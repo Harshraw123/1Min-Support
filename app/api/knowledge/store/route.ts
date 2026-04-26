@@ -22,13 +22,22 @@ function buildMetaData(meta: Record<string, unknown>) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getSession();
+    const session = await getSession();
+    const userEmail = session?.email?.trim() || session?.user?.email?.trim();
+    const workspaceId =
+      typeof session?.organization_id === "string" && session.organization_id.trim()
+        ? session.organization_id.trim()
+        : null;
 
-    if (!user?.email) {
+    if (!userEmail) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-
-    const workspaceId = user.organization_id ?? "";
+    if (!workspaceId) {
+      return NextResponse.json(
+        { message: "Missing workspace context (organization_id)" },
+        { status: 400 }
+      );
+    }
 
     const contentType = req.headers.get("content-type") || "";
     const isFormData = contentType.includes("multipart/form-data");
@@ -89,7 +98,7 @@ ${rawText}`;
           content: formattedContent,
           type: "upload",
           status: "active",
-          user_email: user.email,
+          user_email: userEmail,
           workspace_id: workspaceId,
           meta_data: buildMetaData({
             flow: "upload",
@@ -178,7 +187,7 @@ ${extracted.structured}`;
           type: "website",
           status: "active",
           source_url: finalUrl,
-          user_email: user.email,
+          user_email: userEmail,
           workspace_id: workspaceId,
           meta_data: buildMetaData({
             flow: "website",
@@ -217,7 +226,7 @@ ${extracted.structured}`;
           content: formattedContent,
           type: "text",
           status: "active",
-          user_email: user.email,
+          user_email: userEmail,
           workspace_id: workspaceId,
           meta_data: buildMetaData({
             flow: "text",

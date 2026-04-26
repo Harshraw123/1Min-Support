@@ -1,14 +1,16 @@
-
-
 import { db } from "@/db/client";
 import { metadata } from "@/db/schema";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/getSession";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { user_email, business_name, website_url, external_links } = body;
+    const { business_name, website_url, external_links } = body ?? {};
+
+    const session = await getSession();
+    const user_email = session?.email?.trim() || session?.user?.email?.trim();
 
     if (!user_email || !business_name || !website_url) {
       return new NextResponse("Missing required fields", { status: 400 });
@@ -16,9 +18,9 @@ export async function POST(req: NextRequest) {
 
     const metadataResponse = await db.insert(metadata).values({
       user_email,
-      business_name,
-      website_url,
-      external_links,
+      business_name: String(business_name).trim(),
+      website_url: String(website_url).trim(),
+      external_links: external_links ? String(external_links).trim() : null,
     }).returning();
 
     // Set a cookie to indicate metadata is configured

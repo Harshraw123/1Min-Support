@@ -1,6 +1,8 @@
 import { getSession } from "@/lib/getSession";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const user = await getSession();

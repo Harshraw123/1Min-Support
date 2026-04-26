@@ -1,4 +1,4 @@
-import React from "react";
+
 import { X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,26 +38,10 @@ interface SectionFormFieldsProps {
 }
 
 const TONE_OPTIONS = [
-  {
-    value: "neutral",
-    label: "Neutral",
-    // description: "Balanced, clear, and helpful.",
-  },
-  {
-    value: "friendly",
-    label: "Friendly",
-    // description: "Warm, approachable, and conversational.",
-  },
-  {
-    value: "professional",
-    label: "Professional",
-    // description: "Concise, structured, and business-first.",
-  },
-  {
-    value: "strict",
-    label: "Strict",
-    // description: "Fact-based only. Avoid speculation and small talk.",
-  },
+  { value: "neutral", label: "Neutral" },
+  { value: "friendly", label: "Friendly" },
+  { value: "professional", label: "Professional" },
+  { value: "strict", label: "Strict" },
 ];
 
 const SectionFormFields = ({
@@ -77,8 +61,9 @@ const SectionFormFields = ({
     }
   };
 
-  const getSourceLabel = (source: SectionFormFieldsProps["knowledgeSources"][number]) =>
-    source.title || source.source_url || source.url || "Untitled";
+  const getSourceLabel = (
+    source: SectionFormFieldsProps["knowledgeSources"][number]
+  ) => source.title || source.source_url || source.url || "Untitled";
 
   return (
     <div className="space-y-8">
@@ -110,7 +95,8 @@ const SectionFormFields = ({
             onChange={(e) =>
               setFormData({ ...formData, description: e.target.value })
             }
-            className="min-h-[90px] resize-none"
+            // FIX 1: min-h kept but now uses sm: breakpoint to grow on larger screens
+            className="min-h-[90px] sm:min-h-[110px] resize-none"
           />
         </div>
       </div>
@@ -122,7 +108,7 @@ const SectionFormFields = ({
             Data Sources
           </p>
           {selectedSources.length > 0 && (
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs shrink-0 ml-2">
               {selectedSources.length} attached
             </Badge>
           )}
@@ -133,14 +119,16 @@ const SectionFormFields = ({
             <div className="p-4 space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <Skeleton className="h-4 w-4 rounded" />
-                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 w-4 rounded shrink-0" />
+                  <Skeleton className="h-4 flex-1 min-w-0" />
                 </div>
               ))}
             </div>
           ) : knowledgeSources.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center px-4">
-              <p className="text-sm text-muted-foreground">No knowledge sources found.</p>
+              <p className="text-sm text-muted-foreground">
+                No knowledge sources found.
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Add sources from the Knowledge page first.
               </p>
@@ -153,7 +141,7 @@ const SectionFormFields = ({
                   <label
                     key={source.id}
                     htmlFor={`src-${source.id}`}
-                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40 ${
+                    className={`flex items-center gap-3 px-3 py-3 sm:px-4 cursor-pointer transition-colors hover:bg-muted/40 ${
                       isDisabled ? "opacity-50 cursor-not-allowed" : ""
                     } ${isChecked ? "bg-muted/30" : ""}`}
                   >
@@ -162,12 +150,19 @@ const SectionFormFields = ({
                       disabled={isDisabled}
                       checked={isChecked}
                       onCheckedChange={() => toggleSource(source.id)}
+                      // FIX 2: prevent checkbox from shrinking on narrow screens
+                      className="shrink-0"
                     />
-                    <span className="text-sm truncate flex-1 select-none">
+                    {/* FIX 3: min-w-0 + overflow-hidden + break-all allow long URLs to wrap/truncate correctly */}
+                    <span className="text-sm min-w-0 flex-1 truncate break-all select-none">
                       {getSourceLabel(source)}
                     </span>
                     {isChecked && (
-                      <Badge variant="secondary" className="text-xs shrink-0">
+                      <Badge
+                        variant="secondary"
+                        // FIX 4: hidden on very small screens to avoid crowding
+                        className="text-xs shrink-0 hidden xs:inline-flex"
+                      >
                         Attached
                       </Badge>
                     )}
@@ -190,7 +185,9 @@ const SectionFormFields = ({
           <Select
             disabled={isDisabled}
             value={formData.tone}
-            onValueChange={(value) => setFormData({ ...formData, tone: value })}
+            onValueChange={(value) =>
+              setFormData({ ...formData, tone: value })
+            }
           >
             <SelectTrigger>
               <SelectValue placeholder="Select tone" />
@@ -200,9 +197,6 @@ const SectionFormFields = ({
                 <SelectItem key={t.value} value={t.value}>
                   <div className="flex flex-col py-0.5">
                     <span>{t.label}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {t.description}
-                    </span>
                   </div>
                 </SelectItem>
               ))}
@@ -236,7 +230,8 @@ const SectionFormFields = ({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* FIX 5: grid-cols-1 on mobile, grid-cols-2 only on sm+ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="allowed-topics">Allowed topics</Label>
             <Textarea
@@ -247,7 +242,8 @@ const SectionFormFields = ({
               onChange={(e) =>
                 setFormData({ ...formData, allowedTopics: e.target.value })
               }
-              className="text-sm min-h-[80px] resize-none"
+              // FIX 6: replaced fixed h-[80px] with min-h so content isn't clipped
+              className="text-sm min-h-[80px] resize-none overflow-y-auto"
             />
           </div>
           <div className="space-y-2">
@@ -260,7 +256,8 @@ const SectionFormFields = ({
               onChange={(e) =>
                 setFormData({ ...formData, blockedTopics: e.target.value })
               }
-              className="text-sm min-h-[80px] resize-none"
+              // FIX 6: same fix applied here
+              className="text-sm min-h-[80px] resize-none overflow-y-auto"
             />
           </div>
         </div>

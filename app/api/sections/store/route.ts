@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { sections as sectionsTable } from "@/db/schema";
+import { sections } from "@/db/schema";
 import { getSession } from "@/lib/getSession";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
-type SectionPayload = {
+export const dynamic = "force-dynamic";
+
+type StorePayload = {
   id?: string;
   name?: string;
   description?: string;
@@ -13,138 +15,199 @@ type SectionPayload = {
   allowed_topics?: string;
   blocked_topics?: string;
   fallback_behavior?: string;
-  source_ids?: string[]; // stored as JSON string
+  source_ids?: string[] | string | null;
   status?: string;
 };
 
-function safeStringArrayJson(value: unknown): string | null {
-  if (!Array.isArray(value)) return null;
-  const filtered = value.filter((v) => typeof v === "string") as string[];
-  try {
-    return JSON.stringify(filtered);
-  } catch {
-    return null;
+function normalizeOptionalText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeSourceIds(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (Array.isArray(value)) {
+    const ids = value.filter((v) => typeof v === "string" && v.trim().length > 0);
+    return JSON.stringify(ids);
   }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        const ids = parsed.filter((v) => typeof v === "string" && v.trim().length > 0);
+        return JSON.stringify(ids);
+      }
+    } catch {
+      // If it's not JSON, store as-is to avoid data loss.
+    }
+    return trimmed;
+  }
+  return null;
+}
+
+async function requireSessionContext() {
+  const session = await getSession();
+  const userEmail = session?.email?.trim() || session?.user?.email?.trim();
+  const workspaceId =
+    typeof session?.organization_id === "string" && session.organization_id.trim()
+      ? session.organization_id.trim()
+      : null;
+
+  if (!userEmail) {
+    return { ok: false as const, response: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
+  }
+
+  // `sections.workspace_id` is notNull in schema — enforce it.
+  if (!workspaceId) {
+    return {
+      ok: false as const,
+      response: NextResponse.json(
+        { message: "Missing workspace context (organization_id)" },
+        { status: 400 }
+      ),
+    };
+  }
+
+  return { ok: true as const, userEmail, workspaceId };
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getSession();
-    if (!user?.email) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireSessionContext();
+    if (!ctx.ok) return ctx.response;
 
-    const workspaceId = user.organization_id ?? "";
-    const body = (await req.json().catch(() => null)) as SectionPayload | null;
-    if (!body) {
-      return NextResponse.json({ message: "Invalid JSON body" }, { status: 400 });
-    }
+    const body = (await req.json()) as StorePayload;
 
-    const name = (body.name ?? "").trim();
-    const description = (body.description ?? "").trim();
+    const name = normalizeOptionalText(body.name);
+    const description = normalizeOptionalText(body.description);
+    const tone = normalizeOptionalText(body.tone) ?? "neutral";
+    const scopeLabel = normalizeOptionalText(body.scope_label) ?? "general";
+    const fallbackBehavior = normalizeOptionalText(body.fallback_behavior) ?? "escalate";
+    const allowedTopics = normalizeOptionalText(body.allowed_topics);
+    const blockedTopics = normalizeOptionalText(body.blocked_topics);
+    const sourceIds = normalizeSourceIds(body.source_ids);
+    const status = normalizeOptionalText(body.status) ?? "active";
 
     if (!name || !description) {
-      return NextResponse.json(
-        { message: "Name and description are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Name and description are required" }, { status: 400 });
     }
 
-    const [inserted] = await db
-      .insert(sectionsTable)
+    const [created] = await db
+      .insert(sections)
       .values({
-        user_email: user.email,
-        workspace_id: workspaceId,
+        user_email: ctx.userEmail,
+        workspace_id: ctx.workspaceId,
         name,
         description,
-        tone: (body.tone ?? "neutral").trim() || "neutral",
-        scope_label: (body.scope_label ?? "general").trim() || "general",
-        allowed_topics: (body.allowed_topics ?? "").trim() || null,
-        blocked_topics: (body.blocked_topics ?? "").trim() || null,
-        fallback_behavior: (body.fallback_behavior ?? "escalate").trim() || "escalate",
-        source_ids: safeStringArrayJson(body.source_ids) ?? null,
-        status: (body.status ?? "active").trim() || "active",
+        tone,
+        scope_label: scopeLabel,
+        allowed_topics: allowedTopics,
+        blocked_topics: blockedTopics,
+        fallback_behavior: fallbackBehavior,
+        source_ids: sourceIds,
+        status,
       })
       .returning();
 
-    return NextResponse.json(inserted, { status: 201 });
+    return NextResponse.json({ data: created }, { status: 201 });
   } catch (error) {
-    console.error("[SECTIONS_STORE_ERROR]", error);
+    console.error("[SECTIONS_STORE_POST_ERROR]", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
-    const user = await getSession();
-    if (!user?.email) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    const ctx = await requireSessionContext();
+    if (!ctx.ok) return ctx.response;
+
+    const body = (await req.json()) as StorePayload;
+    const id = normalizeOptionalText(body.id);
+    if (!id) return NextResponse.json({ message: "Section id is required" }, { status: 400 });
+
+    const patch: Partial<typeof sections.$inferInsert> = {};
+
+    const name = normalizeOptionalText(body.name);
+    if (name !== null) patch.name = name;
+
+    const description = normalizeOptionalText(body.description);
+    if (description !== null) patch.description = description;
+
+    const tone = normalizeOptionalText(body.tone);
+    if (tone !== null) patch.tone = tone;
+
+    const scopeLabel = normalizeOptionalText(body.scope_label);
+    if (scopeLabel !== null) patch.scope_label = scopeLabel;
+
+    const allowedTopics = normalizeOptionalText(body.allowed_topics);
+    if (body.allowed_topics !== undefined) patch.allowed_topics = allowedTopics;
+
+    const blockedTopics = normalizeOptionalText(body.blocked_topics);
+    if (body.blocked_topics !== undefined) patch.blocked_topics = blockedTopics;
+
+    const fallbackBehavior = normalizeOptionalText(body.fallback_behavior);
+    if (fallbackBehavior !== null) patch.fallback_behavior = fallbackBehavior;
+
+    if (body.source_ids !== undefined) patch.source_ids = normalizeSourceIds(body.source_ids);
+
+    const status = normalizeOptionalText(body.status);
+    if (status !== null) patch.status = status;
+
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ message: "No fields to update" }, { status: 400 });
     }
-
-    const body = (await req.json().catch(() => null)) as SectionPayload | null;
-    if (!body?.id) {
-      return NextResponse.json({ message: "Missing section id" }, { status: 400 });
-    }
-
-    const updates: Record<string, unknown> = {};
-
-    if (typeof body.name === "string") updates.name = body.name.trim();
-    if (typeof body.description === "string")
-      updates.description = body.description.trim();
-    if (typeof body.tone === "string") updates.tone = body.tone.trim();
-    if (typeof body.scope_label === "string")
-      updates.scope_label = body.scope_label.trim();
-    if (typeof body.allowed_topics === "string")
-      updates.allowed_topics = body.allowed_topics.trim() || null;
-    if (typeof body.blocked_topics === "string")
-      updates.blocked_topics = body.blocked_topics.trim() || null;
-    if (typeof body.fallback_behavior === "string")
-      updates.fallback_behavior = body.fallback_behavior.trim() || "escalate";
-    if (Array.isArray(body.source_ids))
-      updates.source_ids = safeStringArrayJson(body.source_ids) ?? null;
-    if (typeof body.status === "string") updates.status = body.status.trim();
 
     const [updated] = await db
-      .update(sectionsTable)
-      .set(updates)
-      .where(eq(sectionsTable.id, body.id))
+      .update(sections)
+      .set(patch)
+      .where(
+        and(
+          eq(sections.id, id),
+          eq(sections.user_email, ctx.userEmail),
+          eq(sections.workspace_id, ctx.workspaceId)
+        )
+      )
       .returning();
 
     if (!updated) {
       return NextResponse.json({ message: "Section not found" }, { status: 404 });
     }
 
-    return NextResponse.json(updated, { status: 200 });
+    return NextResponse.json({ data: updated }, { status: 200 });
   } catch (error) {
-    console.error("[SECTIONS_UPDATE_ERROR]", error);
+    console.error("[SECTIONS_STORE_PUT_ERROR]", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
-    const user = await getSession();
-    if (!user?.email) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireSessionContext();
+    if (!ctx.ok) return ctx.response;
 
-    const body = (await req.json().catch(() => null)) as { id?: string } | null;
-    if (!body?.id) {
-      return NextResponse.json({ message: "Missing section id" }, { status: 400 });
-    }
+    const body = (await req.json().catch(() => ({}))) as { id?: string };
+    const id = normalizeOptionalText(body.id);
+    if (!id) return NextResponse.json({ message: "Section id is required" }, { status: 400 });
 
     const [deleted] = await db
-      .delete(sectionsTable)
-      .where(eq(sectionsTable.id, body.id))
+      .delete(sections)
+      .where(
+        and(
+          eq(sections.id, id),
+          eq(sections.user_email, ctx.userEmail),
+          eq(sections.workspace_id, ctx.workspaceId)
+        )
+      )
       .returning();
 
-    if (!deleted) {
-      return NextResponse.json({ message: "Section not found" }, { status: 404 });
-    }
+    if (!deleted) return NextResponse.json({ message: "Section not found" }, { status: 404 });
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error("[SECTIONS_DELETE_ERROR]", error);
+    console.error("[SECTIONS_STORE_DELETE_ERROR]", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }

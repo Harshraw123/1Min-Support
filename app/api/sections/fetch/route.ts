@@ -2,19 +2,31 @@ import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { sections as sectionsTable } from "@/db/schema";
 import { getSession } from "@/lib/getSession";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export async function GET() {
   try {
-    const user = await getSession();
-    if (!user?.email) {
+    const session = await getSession();
+    const userEmail = session?.email?.trim() || session?.user?.email?.trim();
+    const workspaceId =
+      typeof session?.organization_id === "string" && session.organization_id.trim()
+        ? session.organization_id.trim()
+        : null;
+
+    if (!userEmail) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+    if (!workspaceId) {
+      return NextResponse.json(
+        { message: "Missing workspace context (organization_id)" },
+        { status: 400 }
+      );
     }
 
     const rows = await db
       .select()
       .from(sectionsTable)
-      .where(eq(sectionsTable.user_email, user.email));
+      .where(and(eq(sectionsTable.user_email, userEmail), eq(sectionsTable.workspace_id, workspaceId)));
 
     return NextResponse.json(rows, { status: 200 });
   } catch (error) {
