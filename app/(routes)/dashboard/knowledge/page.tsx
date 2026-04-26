@@ -6,6 +6,7 @@ import KnowledgeTable from "@/app/components/KnowledgeTable";
 import QuickAction from "@/app/components/QuickAction";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import SourceDetailSheet from "@/app/components/SourceDetailSheet";
 
 type KnowledgeRow = {
   id: string;
@@ -26,6 +27,8 @@ const Page = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [sources, setSources] = useState<KnowledgeRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSourceSheetOpen, setIsSourceSheetOpen] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<KnowledgeRow | null>(null);
 
   const openModal = (tab: KnowledgeType) => {
     setDefaultTab(tab);
@@ -79,7 +82,14 @@ const Page = () => {
       <div className="grid gap-6">
         {/* Quick Actions Section */}
         <QuickAction onOpenModal={openModal} />
-        <KnowledgeTable sources={sources} isLoading={isLoading} />
+        <KnowledgeTable
+          sources={sources}
+          isLoading={isLoading}
+          onOpenDetails={(source) => {
+            setSelectedSource(source as KnowledgeRow);
+            setIsSourceSheetOpen(true);
+          }}
+        />
         
         {/* Knowledge Source List / Content would follow here */}
       </div>
@@ -93,6 +103,14 @@ const Page = () => {
         existingSources={sources
           .filter((s) => Boolean(s.source_url))
           .map((s) => ({ source_url: s.source_url! }))}
+      />
+      <SourceDetailSheet
+        isOpen={isSourceSheetOpen}
+        setIsOpen={(open) => {
+          setIsSourceSheetOpen(open);
+          if (!open) setSelectedSource(null);
+        }}
+        selectedSource={selectedSource}
       />
     </div>
   );

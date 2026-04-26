@@ -79,3 +79,31 @@ export const knowledge = pgTable("knowledge", {
 
   created_at: text("created_at").default(sql`now()`),
 });
+
+export const sections = pgTable("sections", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+
+  user_email: text("user_email").notNull(),
+  workspace_id: text("workspace_id").notNull(),
+
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+
+  tone: text("tone").notNull().default("neutral"),
+  scope_label: text("scope_label").notNull().default("general"),
+
+  allowed_topics: text("allowed_topics"),
+  blocked_topics: text("blocked_topics"),
+  fallback_behavior: text("fallback_behavior").notNull().default("escalate"),
+
+  /**
+   * JSON string array of knowledge ids.
+   * Stored as text to keep schema simple and avoid jsonb dependency here.
+   */
+  source_ids: text("source_ids"),
+
+  status: text("status").notNull().default("active"),
+  created_at: text("created_at").default(sql`now()`),
+});

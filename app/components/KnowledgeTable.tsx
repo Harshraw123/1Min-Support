@@ -35,22 +35,23 @@ type KnowledgeSourceRow = {
 interface KnowledgeTableProps {
   sources: KnowledgeSourceRow[];
   isLoading: boolean;
+  onOpenDetails?: (source: KnowledgeSourceRow) => void;
 }
 
-const KnowledgeTable = ({ sources, isLoading }: KnowledgeTableProps) => {
+const KnowledgeTable = ({ sources, isLoading, onOpenDetails }: KnowledgeTableProps) => {
   return (
-    <Card className="bg-white border-zinc-200/70 shadow-sm rounded-2xl">
+    <Card className="bg-card border-border shadow-sm rounded-2xl">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <CardTitle className="text-base font-semibold text-zinc-900">
+          <CardTitle className="text-base font-semibold">
             Sources
           </CardTitle>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                className="pl-9 h-9 w-full sm:w-[220px] md:w-[320px] bg-white border-zinc-200 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-violet-500/30"
+                className="pl-9 h-9 w-full sm:w-[220px] md:w-[320px]"
                 placeholder="Search sources ..."
               />
             </div>
@@ -58,7 +59,7 @@ const KnowledgeTable = ({ sources, isLoading }: KnowledgeTableProps) => {
             <Button
               variant="ghost"
               size="icon"
-              className="shrink-0 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+              className="shrink-0"
             >
               <Filter className="w-4 h-4" />
             </Button>
@@ -69,21 +70,21 @@ const KnowledgeTable = ({ sources, isLoading }: KnowledgeTableProps) => {
       <CardContent className="px-0">
         <div className="w-full overflow-x-auto">
           <Table>
-            <TableHeader className="border-zinc-200/70 bg-zinc-50/60">
-              <TableRow className="hover:bg-transparent border-zinc-200/70">
-                <TableHead className="text-[11px] uppercase tracking-wide font-semibold text-zinc-500 pl-6">
+            <TableHeader className="border-border bg-muted/30">
+              <TableRow className="hover:bg-transparent border-border">
+                <TableHead className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground pl-6">
                   Name
                 </TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wide font-semibold text-zinc-500">
+                <TableHead className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
                   Type
                 </TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wide font-semibold text-zinc-500">
+                <TableHead className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
                   Status
                 </TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wide font-semibold text-zinc-500">
+                <TableHead className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
                   Last Updated
                 </TableHead>
-                <TableHead className="text-right text-[11px] uppercase tracking-wide font-semibold text-zinc-500 pr-6">
+                <TableHead className="text-right text-[11px] uppercase tracking-wide font-semibold text-muted-foreground pr-6">
                   Actions
                 </TableHead>
               </TableRow>
@@ -92,25 +93,25 @@ const KnowledgeTable = ({ sources, isLoading }: KnowledgeTableProps) => {
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i} className="border-zinc-200/70">
+                  <TableRow key={i} className="border-border">
                     <TableCell className="pl-6 py-4">
                       <div className="flex items-center gap-2">
-                        <Skeleton className="h-4 w-4 rounded-full bg-zinc-200" />
-                        <Skeleton className="h-4 w-[180px] bg-zinc-200" />
+                        <Skeleton className="h-4 w-4 rounded-full" />
+                        <Skeleton className="h-4 w-[180px]" />
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-16 bg-zinc-200" />
+                      <Skeleton className="h-4 w-16" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-20 bg-zinc-200" />
+                      <Skeleton className="h-4 w-20" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-24 bg-zinc-200" />
+                      <Skeleton className="h-4 w-24" />
                     </TableCell>
                     <TableCell className="pr-6">
                       <div className="flex justify-end">
-                        <Skeleton className="h-8 w-8 rounded-md bg-zinc-200" />
+                        <Skeleton className="h-8 w-8 rounded-md" />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -119,14 +120,14 @@ const KnowledgeTable = ({ sources, isLoading }: KnowledgeTableProps) => {
                 sources.map((source) => (
                   <TableRow
                     key={source.id}
-                    className="border-zinc-200/70 hover:bg-zinc-50"
+                    className="border-border hover:bg-muted/30"
                   >
-                    <TableCell className="text-zinc-900 font-medium pl-6 py-4">
+                    <TableCell className="font-medium pl-6 py-4">
                       <div className="flex items-center gap-2">
                         {source.type === "website" ? (
-                          <Globe className="h-4 w-4 text-zinc-500" />
+                          <Globe className="h-4 w-4 text-muted-foreground" />
                         ) : (
-                          <FileText className="h-4 w-4 text-zinc-500" />
+                          <FileText className="h-4 w-4 text-muted-foreground" />
                         )}
                         <span className="max-w-[240px] md:max-w-[360px] truncate">
                           {source.title}
@@ -136,18 +137,20 @@ const KnowledgeTable = ({ sources, isLoading }: KnowledgeTableProps) => {
                     <TableCell>
                       <Badge
                         variant="secondary"
-                        className="capitalize font-medium bg-zinc-100 text-zinc-700 hover:bg-zinc-100"
+                        className="capitalize font-medium"
                       >
                         {source.type}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 text-emerald-600">
+                      <div className="flex items-center gap-2">
                         <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <span className="text-sm capitalize">{source.status}</span>
+                        <span className="text-sm capitalize text-emerald-600">
+                          {source.status}
+                        </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-zinc-600 text-sm">
+                    <TableCell className="text-muted-foreground text-sm">
                       {source.created_at
                         ? new Date(source.created_at).toLocaleString()
                         : "—"}
@@ -157,14 +160,16 @@ const KnowledgeTable = ({ sources, isLoading }: KnowledgeTableProps) => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+                          className="h-8 w-8"
+                          onClick={() => onOpenDetails?.(source)}
+                          aria-label="View source details"
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-zinc-600 hover:text-destructive hover:bg-zinc-100"
+                          className="h-8 w-8 hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
