@@ -11,8 +11,8 @@ import ChatSimulator from "@/app/components/ChatSimulator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import EmbedCodeConfig from "@/app/components/embedCodeConfig";
 
-import { COLOR_PRESETS } from "@/lib/chatbotMetaData";
-import { AVATAR_PRESETS } from "@/lib/chatbotMetaData";
+import { COLOR_PRESETS } from "@/lib/ChatBotmetaData/chatbotMetaData";
+import { AVATAR_PRESETS } from "@/lib/ChatBotmetaData/chatbotMetaData";
 import Image from "next/image";
 
 
@@ -174,11 +174,14 @@ const ChatbotPage = () => {
                           className="flex h-6 w-6 items-center justify-center rounded-full p-0.5"
                           style={{ backgroundColor: primaryColor }}
                         >
-                          <img
-                            src={avatarSrc}
-                            alt="Selected avatar"
-                            className="h-full w-full object-contain"
-                          />
+     
+
+<Image
+  src={avatarSrc}
+  alt="Selected avatar"
+  fill
+  className="object-contain"
+/>
                         </span>
                       ) : (
                         <span className="text-muted-foreground">+{overflowAvatars.length}</span>

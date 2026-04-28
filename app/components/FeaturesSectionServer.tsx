@@ -1,7 +1,7 @@
-import FeaturesSectionClient from "./FeaturesSection";
+import FeaturesSection from "./FeaturesSection";
 
 const FeaturesSectionServer = () => {
-  return <FeaturesSectionClient />;
+  return <FeaturesSection />;
 };
 
 export default FeaturesSectionServer;

@@ -15,9 +15,9 @@
 
 export interface ExtractedContent {
     cleanText: string;           // human-readable, noise-free
-    jsonLd: Record<string, any>[];    // all JSON-LD blocks found
-    nextData: Record<string, any> | null; // __NEXT_DATA__ if present
-    apolloState: Record<string, any> | null; // __APOLLO_STATE__ if present
+    jsonLd: Record<string, unknown>[];    // all JSON-LD blocks found
+    nextData: Record<string, unknown> | null; // __NEXT_DATA__ if present
+    apolloState: Record<string, unknown> | null; // __APOLLO_STATE__ if present
     /** Flattened best-effort string ready to send to LLM */
     structured: string;
   }
@@ -26,7 +26,7 @@ export interface ExtractedContent {
   // 1. Extract __NEXT_DATA__
   // ─────────────────────────────────────────────────────────────
   
-  function extractNextData(html: string): Record<string, any> | null {
+  function extractNextData(html: string): Record<string, unknown> | null {
     try {
       const match = html.match(
         /<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i
@@ -42,7 +42,7 @@ export interface ExtractedContent {
   // 2. Extract __APOLLO_STATE__
   // ─────────────────────────────────────────────────────────────
   
-  function extractApolloState(html: string): Record<string, any> | null {
+  function extractApolloState(html: string): Record<string, unknown> | null {
     try {
       const match = html.match(/window\.__APOLLO_STATE__\s*=\s*(\{[\s\S]*?\});<\/script>/);
       if (!match?.[1]) return null;
@@ -56,8 +56,8 @@ export interface ExtractedContent {
   // 3. Extract all JSON-LD blocks
   // ─────────────────────────────────────────────────────────────
   
-  function extractJsonLd(html: string): Record<string, any>[] {
-    const results: Record<string, any>[] = [];
+  function extractJsonLd(html: string): Record<string, unknown>[] {
+    const results: Record<string, unknown>[] = [];
     const regex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   
     let match: RegExpExecArray | null;
@@ -114,57 +114,91 @@ export interface ExtractedContent {
   // 5. Flatten JSON-LD into readable text for LLM
   // ─────────────────────────────────────────────────────────────
   
-  function flattenJsonLd(blocks: Record<string, any>[]): string {
+  function flattenJsonLd(blocks: Record<string, unknown>[]): string {
     const lines: string[] = [];
   
     for (const block of blocks) {
-      const type = block["@type"];
+      const type =
+        typeof block === "object" && block !== null && "@type" in block
+          ? (block as { "@type"?: unknown })["@type"]
+          : undefined;
       if (!type) continue;
   
-      lines.push(`\n[Schema: ${type}]`);
+      lines.push(`\n[Schema: ${String(type)}]`);
   
       // Product
       if (type === "Product") {
-        if (block.name)        lines.push(`Name: ${block.name}`);
-        if (block.description) lines.push(`Description: ${block.description}`);
-        if (block.offers) {
-          const offer = Array.isArray(block.offers) ? block.offers[0] : block.offers;
-          if (offer?.price)    lines.push(`Price: ${offer.price} ${offer.priceCurrency ?? ""}`);
-          if (offer?.availability) lines.push(`Availability: ${offer.availability}`);
+        const b = block as Record<string, unknown>;
+        if (typeof b.name === "string") lines.push(`Name: ${b.name}`);
+        if (typeof b.description === "string") lines.push(`Description: ${b.description}`);
+        if (b.offers) {
+          const offer = Array.isArray(b.offers) ? b.offers[0] : b.offers;
+          if (offer && typeof offer === "object") {
+            const o = offer as Record<string, unknown>;
+            if (o.price != null) {
+              lines.push(`Price: ${String(o.price)} ${typeof o.priceCurrency === "string" ? o.priceCurrency : ""}`.trim());
+            }
+            if (typeof o.availability === "string") lines.push(`Availability: ${o.availability}`);
+          }
         }
-        if (block.aggregateRating) {
-          lines.push(`Rating: ${block.aggregateRating.ratingValue} / ${block.aggregateRating.bestRating} (${block.aggregateRating.reviewCount} reviews)`);
+        if (b.aggregateRating && typeof b.aggregateRating === "object") {
+          const r = b.aggregateRating as Record<string, unknown>;
+          const ratingValue = r.ratingValue != null ? String(r.ratingValue) : "";
+          const bestRating = r.bestRating != null ? String(r.bestRating) : "";
+          const reviewCount = r.reviewCount != null ? String(r.reviewCount) : "";
+          lines.push(`Rating: ${ratingValue}${bestRating ? ` / ${bestRating}` : ""}${reviewCount ? ` (${reviewCount} reviews)` : ""}`);
         }
       }
   
       // FAQPage
-      if (type === "FAQPage" && Array.isArray(block.mainEntity)) {
+      if (type === "FAQPage" && Array.isArray((block as Record<string, unknown>).mainEntity)) {
         lines.push("FAQs:");
-        for (const faq of block.mainEntity) {
-          lines.push(`  Q: ${faq.name}`);
-          lines.push(`  A: ${faq.acceptedAnswer?.text ?? ""}`);
+        const entities = (block as Record<string, unknown>).mainEntity as unknown[];
+        for (const faq of entities) {
+          if (!faq || typeof faq !== "object") continue;
+          const f = faq as Record<string, unknown>;
+          const q = typeof f.name === "string" ? f.name : "";
+          const accepted = f.acceptedAnswer;
+          const a =
+            accepted && typeof accepted === "object" && "text" in accepted
+              ? (accepted as { text?: unknown }).text
+              : "";
+          lines.push(`  Q: ${q}`);
+          lines.push(`  A: ${typeof a === "string" ? a : ""}`);
         }
       }
   
       // BreadcrumbList
       if (type === "BreadcrumbList" && Array.isArray(block.itemListElement)) {
-        const crumbs = block.itemListElement.map((b: any) => b.name).filter(Boolean);
+        const crumbs = block.itemListElement
+          .map((b: unknown) =>
+            typeof b === "object" && b !== null && "name" in b
+              ? (b as { name?: unknown }).name
+              : undefined
+          )
+          .filter((v): v is string => typeof v === "string" && v.length > 0);
         lines.push(`Breadcrumbs: ${crumbs.join(" > ")}`);
       }
   
       // Organization / WebSite
       if (type === "Organization" || type === "WebSite") {
-        if (block.name)        lines.push(`Org Name: ${block.name}`);
-        if (block.description) lines.push(`Org Description: ${block.description}`);
-        if (block.url)         lines.push(`URL: ${block.url}`);
+        const b = block as Record<string, unknown>;
+        if (typeof b.name === "string") lines.push(`Org Name: ${b.name}`);
+        if (typeof b.description === "string") lines.push(`Org Description: ${b.description}`);
+        if (typeof b.url === "string") lines.push(`URL: ${b.url}`);
       }
   
       // Article / BlogPosting
       if (type === "Article" || type === "BlogPosting") {
-        if (block.headline)    lines.push(`Headline: ${block.headline}`);
-        if (block.description) lines.push(`Description: ${block.description}`);
-        if (block.datePublished) lines.push(`Published: ${block.datePublished}`);
-        if (block.author?.name)  lines.push(`Author: ${block.author.name}`);
+        const b = block as Record<string, unknown>;
+        if (typeof b.headline === "string") lines.push(`Headline: ${b.headline}`);
+        if (typeof b.description === "string") lines.push(`Description: ${b.description}`);
+        if (typeof b.datePublished === "string") lines.push(`Published: ${b.datePublished}`);
+        const author = b.author;
+        if (author && typeof author === "object" && "name" in author) {
+          const name = (author as { name?: unknown }).name;
+          if (typeof name === "string") lines.push(`Author: ${name}`);
+        }
       }
     }
   
@@ -175,13 +209,13 @@ export interface ExtractedContent {
   // 6. Flatten __NEXT_DATA__ — recursively pull string leaf values
   // ─────────────────────────────────────────────────────────────
   
-  function flattenNextData(obj: any, depth = 0): string {
+  function flattenNextData(obj: unknown, depth = 0): string {
     if (depth > 5) return ""; // prevent infinite recursion
     if (!obj || typeof obj !== "object") return "";
   
     const lines: string[] = [];
   
-    for (const [key, value] of Object.entries(obj)) {
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
       // Skip noisy internal keys
       if (["__typename", "id", "cursor", "edges", "node"].includes(key)) continue;
   
@@ -217,9 +251,13 @@ export interface ExtractedContent {
     }
   
     // Priority 2: Next.js page state
-    if (nextData?.props?.pageProps) {
+    const pageProps =
+      typeof nextData?.props === "object" && nextData.props !== null && "pageProps" in nextData.props
+        ? (nextData.props as { pageProps?: unknown }).pageProps
+        : undefined;
+    if (pageProps && typeof pageProps === "object") {
       parts.push("\n=== PAGE DATA (__NEXT_DATA__) ===");
-      parts.push(flattenNextData(nextData.props.pageProps));
+      parts.push(flattenNextData(pageProps));
     }
   
     // Priority 3: Apollo state (GraphQL cache)

@@ -106,7 +106,7 @@ export function AppSidebar() {
         <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
   <Link href="/dashboard" className="flex items-center gap-2.5">
     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden">
-      <Image src="/logo.png" alt="Logo" width={36} height={36} className="object-contain" />
+      <Image src="/logo.avif" alt="Logo" width={36} height={36} className="object-contain" />
     </div>
     {!collapsed && (
       <div className="flex flex-col leading-tight ">

@@ -59,8 +59,13 @@ export async function summarizeMarkdown(rawContent: string): Promise<string> {
     }
 
     return markdown.trim();
-  } catch (error: any) {
-    if (error?.status === 429) {
+  } catch (error: unknown) {
+    const status =
+      typeof error === "object" && error !== null && "status" in error
+        ? (error as { status?: unknown }).status
+        : undefined;
+
+    if (status === 429) {
       console.warn("[SUMMARIZE] Groq rate limit hit — returning raw content");
       return rawContent.slice(0, 15000);
     }
