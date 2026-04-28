@@ -21,7 +21,7 @@
   --color-destructive: oklch(0.577 0.245 27.325);
   --color-border: oklch(0.922 0.006 286.286);
   --color-input: oklch(0.922 0.006 286.286);
-  --color-ring: transparent;
+  --color-ring: oklch(0.72 0.11 244);
   --color-sidebar: oklch(0.99 0.01 286);
   --color-sidebar-foreground: oklch(0.208 0.042 265.755);
   --color-sidebar-primary: oklch(0.45 0.22 290);
@@ -48,6 +48,43 @@
 }
 
 @layer base {
+  /*
+   * Token aliases.
+   * Some UI libs read raw CSS vars like `--popover` / `--border` / `--radius`,
+   * while Tailwind v4 tokens are defined as `--color-*` in `@theme`.
+   */
+  :root {
+    --background: var(--color-background);
+    --foreground: var(--color-foreground);
+    --card: var(--color-card);
+    --card-foreground: var(--color-card-foreground);
+    --popover: var(--color-popover);
+    --popover-foreground: var(--color-popover-foreground);
+    --primary: var(--color-primary);
+    --primary-foreground: var(--color-primary-foreground);
+    --secondary: var(--color-secondary);
+    --secondary-foreground: var(--color-secondary-foreground);
+    --muted: var(--color-muted);
+    --muted-foreground: var(--color-muted-foreground);
+    --accent: var(--color-accent);
+    --accent-foreground: var(--color-accent-foreground);
+    --destructive: var(--color-destructive);
+    --border: var(--color-border);
+    --input: var(--color-input);
+    --ring: var(--color-ring);
+
+    --sidebar: var(--color-sidebar);
+    --sidebar-foreground: var(--color-sidebar-foreground);
+    --sidebar-primary: var(--color-sidebar-primary);
+    --sidebar-primary-foreground: var(--color-sidebar-primary-foreground);
+    --sidebar-accent: var(--color-sidebar-accent);
+    --sidebar-accent-foreground: var(--color-sidebar-accent-foreground);
+    --sidebar-border: var(--color-sidebar-border);
+    --sidebar-ring: var(--color-sidebar-ring);
+
+    --radius: var(--radius-lg);
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
