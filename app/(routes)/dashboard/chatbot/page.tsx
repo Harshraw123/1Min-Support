@@ -1,4 +1,5 @@
-'use client'
+"use client";
+
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -12,15 +13,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import EmbedCodeConfig from "@/app/components/embedCodeConfig";
 
 import { COLOR_PRESETS } from "@/lib/ChatBotmetaData/chatbotMetaData";
-import { AVATAR_PRESETS } from "@/lib/ChatBotmetaData/chatbotMetaData";
+import { AVATAR_PRESETS, AvatarPickerProps } from "@/lib/ChatBotmetaData/chatbotMetaData";
 import Image from "next/image";
-
+import AvatarSelector from "@/app/components/AvatarSelector";
 
 type Section = { id: string; name: string };
 type Message = { role: "user" | "assistant"; content: string };
-
-
-
 
 const ChatbotPage = () => {
   const [primaryColor, setPrimaryColor] = useState("#10b981");
@@ -104,41 +102,9 @@ const ChatbotPage = () => {
     }, 800);
   };
 
-  // Shared avatar swatch renderer (used in header & popover)
-  const renderAvatarSwatch = (a: typeof AVATAR_PRESETS[number]) => {
-    const active = avatarSrc === a.src;
-    return (
-      <button
-        key={a.id}
-        type="button"
-        onClick={() => setAvatarSrc(a.src)}
-        aria-label={`Choose ${a.name} avatar`}
-        aria-pressed={active}
-        className={cn(
-          "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-1 ring-offset-2 ring-offset-background transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-foreground/30",
-          active && "ring-2 ring-foreground"
-        )}
-        style={{ backgroundColor: active ? primaryColor : "hsl(var(--muted))" }}
-      >
-       <Image
-  src={a.src}
-  alt={a.name}
-  width={28}
-  height={28}
-  className="h-full w-full object-contain"
-/>
-      </button>
-    );
-  };
-
-  const inlineAvatars = AVATAR_PRESETS.slice(0, 4);
-  const overflowAvatars = AVATAR_PRESETS.slice(4);
-  const activeInOverflow = overflowAvatars.some((a) => a.src === avatarSrc);
-
   return (
     <div className="relative flex h-screen flex-col overflow-hidden">
       <div className="relative mx-auto flex h-full w-full max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
-
         {/* ── Page header ── */}
         <div className="mb-3 shrink-0 flex items-center justify-between gap-4">
           {/* Left: title + subtitle */}
@@ -151,65 +117,17 @@ const ChatbotPage = () => {
             </p>
           </div>
 
-          {/* Right: Bot Avatar picker inline in header */}
-          <div className="flex items-center gap-2 rounded-2xl border border-border/50 bg-background/60 px-3 py-2 backdrop-blur">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Avatar
-            </span>
-            <div className="flex items-center gap-1.5">
-              {inlineAvatars.map(renderAvatarSwatch)}
-              {overflowAvatars.length > 0 && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="More avatars"
-                      className={cn(
-                        "group relative flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2.5 text-[11px] font-medium text-foreground/80 backdrop-blur transition-all hover:border-primary/50 hover:text-primary focus:outline-none focus:ring-2 focus:ring-foreground/30",
-                        activeInOverflow && "border-foreground text-foreground"
-                      )}
-                    >
-                      {activeInOverflow ? (
-                        <span
-                          className="flex h-6 w-6 items-center justify-center rounded-full p-0.5"
-                          style={{ backgroundColor: primaryColor }}
-                        >
-     
-
-<Image
-  src={avatarSrc}
-  alt="Selected avatar"
-  fill
-  className="object-contain"
-/>
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">+{overflowAvatars.length}</span>
-                      )}
-                      <ChevronDown className="h-3 w-3 opacity-70 transition-transform group-data-[state=open]:rotate-180" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="end"
-                    sideOffset={8}
-                    className="w-auto rounded-2xl border-white/40 bg-popover/95 p-3 backdrop-blur-xl"
-                  >
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                      More avatars
-                    </p>
-                    <div className="flex gap-2">
-                      {overflowAvatars.map(renderAvatarSwatch)}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
-            </div>
-          </div>
+          {/* Right: AvatarSelector component */}
+          <AvatarSelector
+            avatars={AVATAR_PRESETS}
+            avatarSrc={avatarSrc}
+            setAvatarSrc={setAvatarSrc}
+            primaryColor={primaryColor}
+          />
         </div>
 
         {/* ── Main grid ── */}
         <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-5">
-
           {/* Left: Chat simulator */}
           <Card className="glass-strong flex min-h-0 flex-col overflow-hidden rounded-2xl border-white/40 p-0">
             <ChatSimulator
@@ -230,10 +148,8 @@ const ChatbotPage = () => {
             />
           </Card>
 
-          {/* Right column: Appearance + Embed — fully in viewport */}
+          {/* Right column: Appearance + Embed */}
           <div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
-
-  
             <Card className="glass flex shrink-0 flex-col overflow-hidden rounded-2xl border-white/40 p-0">
               {/* Card header */}
               <div className="shrink-0 border-b border-white/30 bg-linear-to-br from-primary/5 to-accent/5 px-4 py-2.5">
@@ -245,10 +161,9 @@ const ChatbotPage = () => {
                 </div>
               </div>
 
-              {/* Scrollable settings — only this inner area scrolls if needed */}
+              {/* Scrollable settings */}
               <div className="px-4 py-4">
                 <div className="flex flex-col gap-4">
-
                   {/* Primary color */}
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold text-foreground">Primary Color</Label>
@@ -303,16 +218,15 @@ const ChatbotPage = () => {
                       placeholder="Say hello to the user…"
                     />
                   </div>
-
                 </div>
               </div>
 
-              {/* Save button — always pinned at bottom of card */}
+              {/* Save button */}
               <div className="shrink-0 border-t border-white/20 px-4 py-3">
                 <Button
                   onClick={handleUpdateConfig}
                   disabled={isSaving}
-                  className="h-9 w-full gap-2 rounded-xl  text-primary-foreground shadow-md transition-all hover:shadow-lg active:scale-[0.99]"
+                  className="h-9 w-full gap-2 rounded-xl text-primary-foreground shadow-md transition-all hover:shadow-lg active:scale-[0.99]"
                 >
                   <Save className="h-4 w-4" />
                   {isSaving ? "Saving…" : "Save Changes"}

@@ -69,7 +69,7 @@ export default function NavbarClient({ user: serverUser }: { user: SessionUser |
         {/* Logo */}
         <div className="flex items-center gap-2">
           <Image src="/logo.avif" alt="logo" height={50} width={50} />
-          <span className="text-lg sm:text-xl font-bold text-primary whitespace-nowrap">
+          <span className="text-lg sm:text-xl font-bold   whitespace-nowrap">
             1Min Support
           </span>
         </div>
