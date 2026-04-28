@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/popover";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 export type AvatarPickerProps = {
   src: string;
@@ -55,12 +56,15 @@ const AvatarSelector = ({
             : undefined
         }
       >
-        <img
-          src={a.src}
-          alt={a.name}
-          className="h-8 w-8 rounded-full object-cover"
-          loading="lazy"
-        />
+
+
+<Image
+  src={a.src}
+  alt={a.name}
+  width={32}
+  height={32}
+  className="h-8 w-8 rounded-full object-cover"
+/>
         {active && (
           <span
             className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background"
@@ -112,11 +116,13 @@ const AvatarSelector = ({
                 }
               >
                 {activeInOverflow && activeOverflowAvatar ? (
-                  <img
-                    src={activeOverflowAvatar.src}
-                    alt={activeOverflowAvatar.name}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
+             <Image
+             src={activeOverflowAvatar.src}
+             alt={activeOverflowAvatar.name}
+             width={32}
+             height={32}
+             className="h-8 w-8 rounded-full object-cover"
+           />
                 ) : (
                   <span className="text-xs font-semibold text-foreground">
                     +{overflowAvatars.length}
