@@ -5,6 +5,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { RefreshCw, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { ChatSimulatorProps } from "@/@types/types";
+import Image from "next/image";
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -15,36 +18,22 @@ interface Section {
   name: string;
 }
 
-interface ChatSimulatorProps {
-  messages: Message[];
-  primaryColor: string;
-  avatarSrc: string;
-  input: string;
-  setInput: (val: string) => void;
-  handleSend: () => void;
-  handleKeyDown: (e: React.KeyboardEvent) => void;
-  isTyping: boolean;
-  handleReset: () => void;
-  scrollRef: React.RefObject<HTMLDivElement | null>;
-  welcomeMessage: string;
-  activeSection: string | null;
-  sections: Section[];
-  handleSectionClick: (id: string) => void;
-}
 
 const Avatar = ({ color, src }: { color: string; src: string }) => (
   <div
     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full shadow-sm transition-colors duration-300"
     style={{ backgroundColor: color }}
   >
-    <img
-      src={src}
-      alt="Bot"
-      width={28}
-      height={28}
-      loading="lazy"
-      className="h-7 w-7 object-contain"
-    />
+
+
+<Image
+  src={src}
+  alt="Bot"
+  width={28}
+  height={28}
+  loading="lazy"
+  className="h-7 w-7 object-contain"
+/>
   </div>
 );
 

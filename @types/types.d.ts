@@ -21,3 +21,20 @@ export interface KnowledgeSubmitPayload {
   textContent?: string;
   file?: File | null;
 }
+
+export interface ChatSimulatorProps {
+  messages: Message[];
+  primaryColor: string;
+  avatarSrc: string;
+  input: string;
+  setInput: (val: string) => void;
+  handleSend: () => void;
+  handleKeyDown: (e: React.KeyboardEvent) => void;
+  isTyping: boolean;
+  handleReset: () => void;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+  welcomeMessage: string;
+  activeSection: string | null;
+  sections: Section[];
+  handleSectionClick: (id: string) => void;
+}

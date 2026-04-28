@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { useScrollReveal } from '../hooks/useScrollReveal'
+import { useScrollReveal } from '@/hooks/useScrollReveal'
 
 const CTASectionClient = () => {
   const { ref, isVisible } = useScrollReveal();
