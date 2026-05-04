@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+
+import { useEffect, useMemo, useState } from "react";
+import { X, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,6 @@ import UploadForm from "./forms/UploadForm";
 import { KnowledgeSubmitPayload, KnowledgeType } from "@/@types/types";
 import { toast } from "sonner";
 
-// ✅ ALL logic now comes from utils
 import {
   colorMap,
   tabColorMap,
@@ -27,19 +27,23 @@ import {
   isDuplicateSource,
 } from "@/lib/Knowledge_MetaData";
 
+type ExistingSource = { source_url: string };
+
+interface AddKnowledgeModalProps {
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
+  onSubmit: (data: any) => void | Promise<void>;
+  existingSources?: ExistingSource[];
+  defaultTab?: KnowledgeType;
+}
+
 export default function AddKnowledgeModal({
   isOpen,
   setIsOpen,
   onSubmit,
   existingSources = [],
   defaultTab = "website",
-}: {
-  isOpen: boolean;
-  setIsOpen: (v: boolean) => void;
-  onSubmit: (data: any) => void | Promise<void>;
-  existingSources?: { source_url: string }[];
-  defaultTab?: KnowledgeType;
-}) {
+}: AddKnowledgeModalProps) {
   const [type, setType] = useState<KnowledgeType>(defaultTab);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -48,12 +52,39 @@ export default function AddKnowledgeModal({
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const activeColors = colorMap[tabColorMap[type]];
+
+  const isWebsiteValid = useMemo(() => {
+    if (type !== "website") return false;
+    if (!url.trim()) return false;
+    if (!validateUrl(url)) return false;
+    if (isDuplicateSource(url, existingSources)) return false;
+    return true;
+  }, [type, url, existingSources]);
+
+  const isTextValid = useMemo(() => {
+    if (type !== "text") return false;
+    return Boolean(title.trim() && content.trim());
+  }, [type, title, content]);
+
+  const isUploadValid = useMemo(() => {
+    if (type !== "upload") return false;
+    return Boolean(file);
+  }, [type, file]);
+
+  const isFormValid = useMemo(() => {
+    if (type === "website") return isWebsiteValid;
+    if (type === "text") return isTextValid;
+    if (type === "upload") return isUploadValid;
+    return false;
+  }, [type, isWebsiteValid, isTextValid, isUploadValid]);
+
   useEffect(() => {
     if (isOpen) {
       setType(defaultTab);
       resetForm();
     }
-  }, [isOpen]);
+  }, [isOpen, defaultTab]);
 
   const resetForm = () => {
     setUrl("");
@@ -61,10 +92,12 @@ export default function AddKnowledgeModal({
     setContent("");
     setFile(null);
     setError("");
+    setIsSubmitting(false);
   };
 
-  const handleTabChange = (t: KnowledgeType) => {
-    setType(t);
+  const handleTabChange = (nextType: KnowledgeType) => {
+    if (isSubmitting) return;
+    setType(nextType);
     setError("");
   };
 
@@ -74,103 +107,92 @@ export default function AddKnowledgeModal({
     setIsOpen(false);
   };
 
-  const handleSubmit = async () => {
-    if (isSubmitting) return;
-
-    // ================= WEBSITE =================
+  const buildPayload = (): KnowledgeSubmitPayload | null => {
     if (type === "website") {
+      if (!url.trim()) {
+        setError("Please enter a URL");
+        return null;
+      }
+
       if (!validateUrl(url)) {
         setError("Please enter a valid URL");
-        return;
+        return null;
       }
 
       if (isDuplicateSource(url, existingSources)) {
         setError("This source has already been added");
-        return;
+        return null;
       }
 
-      const payload: KnowledgeSubmitPayload = {
+      return {
         type,
         websiteUrl: normalizeUrl(url),
       };
-
-      setIsSubmitting(true);
-      setError("");
-
-      try {
-        const result = await importKnowledgeSource(payload);
-        await onSubmit(result);
-
-        resetForm();
-        setIsOpen(false);
-        toast.success("Source added successfully");
-      } catch (e: unknown) {
-        const msg = getErrorMessage(e);
-        setError(msg);
-        toast.error(msg);
-      } finally {
-        setIsSubmitting(false);
-      }
     }
 
-    // ================= TEXT =================
-    else if (type === "text") {
+    if (type === "text") {
       if (!title.trim() || !content.trim()) {
         setError("Title and content are both required");
-        return;
+        return null;
       }
 
-      const payload: KnowledgeSubmitPayload = {
+      return {
         type,
         textTitle: title.trim(),
         textContent: content.trim(),
       };
-
-      setIsSubmitting(true);
-      setError("");
-
-      try {
-        const result = await importKnowledgeSource(payload);
-        await onSubmit(result);
-
-        resetForm();
-        setIsOpen(false);
-        toast.success("Text source added");
-      } catch (e: unknown) {
-        const msg = getErrorMessage(e);
-        setError(msg);
-        toast.error(msg);
-      } finally {
-        setIsSubmitting(false);
-      }
     }
 
-    // ================= UPLOAD =================
-    else if (type === "upload") {
+    if (type === "upload") {
       if (!file) {
         setError("Please select a file to upload");
-        return;
+        return null;
       }
 
-      const payload: KnowledgeSubmitPayload = { type, file };
+      return {
+        type,
+        file,
+      };
+    }
 
-      setIsSubmitting(true);
-      setError("");
+    setError("Invalid source type");
+    return null;
+  };
 
-      try {
-        const result = await importKnowledgeSource(payload);
-        await onSubmit(result);
+  const getSuccessMessage = () => {
+    if (type === "website") return "Source added successfully";
+    if (type === "text") return "Text source added";
+    return "File uploaded successfully";
+  };
 
-        resetForm();
-        setIsOpen(false);
-        toast.success("File uploaded successfully");
-      } catch (e: unknown) {
-        const msg = getErrorMessage(e);
-        setError(msg);
-        toast.error(msg);
-      } finally {
-        setIsSubmitting(false);
-      }
+  const getLoadingLabel = () => {
+    if (type === "website") return "Adding website...";
+    if (type === "text") return "Adding text...";
+    return "Uploading file...";
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    const payload = buildPayload();
+    if (!payload) return;
+
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const result = await importKnowledgeSource(payload);
+      await onSubmit(result);
+
+      resetForm();
+      setIsOpen(false);
+      toast.success(getSuccessMessage());
+    } catch (e: unknown) {
+      const msg = getErrorMessage(e);
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -178,14 +200,28 @@ export default function AddKnowledgeModal({
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) handleClose();
+        if (!open) {
+          if (isSubmitting) return;
+          handleClose();
+          return;
+        }
+
+        setIsOpen(true);
       }}
     >
       <DialogContent
         className="p-0 gap-0 border-0 shadow-2xl rounded-[18px] max-w-[460px] w-full"
         showCloseButton={false}
+        onEscapeKeyDown={(e) => {
+          if (isSubmitting) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (isSubmitting) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          if (isSubmitting) e.preventDefault();
+        }}
       >
-        {/* Header */}
         <div className="flex items-start justify-between px-7 pt-7 pb-5">
           <div>
             <DialogTitle asChild>
@@ -193,6 +229,7 @@ export default function AddKnowledgeModal({
                 Add knowledge source
               </h2>
             </DialogTitle>
+
             <DialogDescription asChild>
               <p className="text-[13px] text-muted-foreground mt-0.5">
                 Connect a website, paste text, or upload a file
@@ -201,26 +238,35 @@ export default function AddKnowledgeModal({
           </div>
 
           <button
+            type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="w-7 h-7 rounded-lg border border-border/40 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 mt-0.5 disabled:opacity-50"
+            aria-label="Close modal"
+            className="w-7 h-7 rounded-lg border border-border/40 flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 mt-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X size={14} />
           </button>
         </div>
 
-        {/* Body */}
         <div className="px-7 pb-7 flex flex-col gap-5">
-          <KnowledgeTabs selected={type} onChange={handleTabChange} />
+          <div className={isSubmitting ? "pointer-events-none opacity-70" : ""}>
+            <KnowledgeTabs
+              selected={type}
+              onChange={handleTabChange}
+              disabled={isSubmitting}
+            />
+          </div>
 
           {type === "website" && (
             <WebsiteForm
               value={url}
               onChange={(v) => {
+                if (isSubmitting) return;
                 setUrl(v);
                 setError("");
               }}
               error={error}
+              disabled={isSubmitting}
             />
           )}
 
@@ -229,14 +275,17 @@ export default function AddKnowledgeModal({
               title={title}
               content={content}
               setTitle={(v) => {
+                if (isSubmitting) return;
                 setTitle(v);
                 setError("");
               }}
               setContent={(v) => {
+                if (isSubmitting) return;
                 setContent(v);
                 setError("");
               }}
               error={error}
+              disabled={isSubmitting}
             />
           )}
 
@@ -244,33 +293,42 @@ export default function AddKnowledgeModal({
             <UploadForm
               file={file}
               setFile={(f) => {
+                if (isSubmitting) return;
                 setFile(f);
                 setError("");
               }}
               error={error}
+              disabled={isSubmitting}
             />
           )}
 
           <div className="border-t border-border/30" />
 
-          {/* Footer */}
           <div className="flex justify-end gap-2">
             <button
+              type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="h-9 px-4 rounded-lg border border-border/50 text-[13px] font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-60"
+              className="h-9 px-4 rounded-lg border border-border/50 text-[13px] font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
 
             <button
+              type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting}
-              className={`h-9 px-5 rounded-lg ${colorMap[tabColorMap[type]].bg
-                } hover:opacity-90 text-[13px] font-medium ${colorMap[tabColorMap[type]].text
-                } transition-colors disabled:opacity-60 disabled:cursor-not-allowed`}
+              disabled={isSubmitting || !isFormValid}
+              aria-busy={isSubmitting}
+              className={`h-9 px-5 rounded-lg inline-flex items-center gap-2 ${activeColors.bg} hover:opacity-90 text-[13px] font-medium ${activeColors.text} transition-colors disabled:opacity-60 disabled:cursor-not-allowed`}
             >
-              {isSubmitting ? "Adding..." : "Add source"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  {getLoadingLabel()}
+                </>
+              ) : (
+                "Add source"
+              )}
             </button>
           </div>
         </div>

@@ -88,14 +88,20 @@ const ChatSimulator = ({
             </div>
           </div>
 
-          {/* Categories shown as pills under welcome */}
-          {!activeSection && sections.length > 0 && (
-            <div className="ml-11 flex flex-wrap gap-1.5">
+          {/* Context switcher always visible for dynamic section switching */}
+          {sections.length > 0 && (
+            <div className="ml-11 flex flex-wrap items-center gap-1.5">
               {sections.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => handleSectionClick(s.id)}
-                  className="rounded-full border border-border/60 bg-white/60 px-3 py-1 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-white hover:text-foreground"
+                  aria-pressed={activeSection === s.id}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-[11px] font-medium transition-all",
+                    activeSection === s.id
+                      ? "border-primary/50 bg-primary/10 text-foreground"
+                      : "border-border/60 bg-white/60 text-muted-foreground hover:border-primary/30 hover:bg-white hover:text-foreground"
+                  )}
                 >
                   {s.name}
                 </button>
@@ -125,19 +131,27 @@ const ChatSimulator = ({
               </div>
             </div>
           ))}
-
-          {isTyping && (
-            <div className="flex items-start gap-2.5">
-              <Avatar color={primaryColor} src={avatarSrc} />
-              <div className="rounded-2xl rounded-tl-sm bg-white/90 px-4 py-3 shadow-sm ring-1 ring-border/40">
-                <div className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.3s]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60 [animation-delay:-0.15s]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60" />
-                </div>
-              </div>
-            </div>
-          )}
+{isTyping && (
+  <div className="flex items-start gap-2.5">
+    <Avatar color={primaryColor} src={avatarSrc} />
+    <div className="rounded-2xl rounded-tl-sm bg-white/90 px-4 py-3 shadow-sm ring-1 ring-border/40">
+      <div className="flex items-center gap-1">
+        <span
+          className="h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.3s]"
+          style={{ backgroundColor: primaryColor }}
+        />
+        <span
+          className="h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.15s]"
+          style={{ backgroundColor: primaryColor }}
+        />
+        <span
+          className="h-1.5 w-1.5 animate-bounce rounded-full"
+          style={{ backgroundColor: primaryColor }}
+        />
+      </div>
+    </div>
+  </div>
+)}
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
@@ -168,7 +182,12 @@ const ChatSimulator = ({
               backgroundColor: canSend ? primaryColor : undefined,
             }}
           >
-            <Send className="h-3.5 w-3.5" />
+      <Send
+  className="h-3.5 w-3.5"
+  style={{
+    color: canSend ? "white" : "currentColor",
+  }}
+/>
           </Button>
         </div>
       </div>

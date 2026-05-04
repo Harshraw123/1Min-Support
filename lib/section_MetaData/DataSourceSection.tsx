@@ -7,7 +7,7 @@ import type { KnowledgeSource, SectionFormFieldsSharedProps } from "./types";
 const getSourceLabel = (source: KnowledgeSource) =>
   source.title || source.source_url || source.url || "Untitled";
 
-export function DataSourcesSection({
+function DataSourcesSection({
   knowledgeSources,
   selectedSources,
   setSelectedSources,
@@ -37,7 +37,7 @@ export function DataSourcesSection({
         </p>
 
         {selectedSources.length > 0 && (
-          <Badge variant="secondary" className="text-xs">
+          <Badge className="text-xs bg-black text-white">
             {selectedSources.length} attached
           </Badge>
         )}
@@ -65,17 +65,21 @@ export function DataSourcesSection({
                     checked={checked}
                     disabled={isDisabled}
                     onCheckedChange={() => toggleSource(source.id)}
+                    
+             
+                    className="
+                      border-gray-300
+                      data-[state=checked]:bg-black
+                      data-[state=checked]:border-black
+                      data-[state=checked]:text-white
+                    "
                   />
 
                   <span className="truncate flex-1 text-sm" title={label}>
                     {label}
                   </span>
 
-                  {checked && (
-                    <Badge className="hidden sm:inline-flex text-xs">
-                      Attached
-                    </Badge>
-                  )}
+                 
                 </label>
               );
             })}
@@ -85,3 +89,5 @@ export function DataSourcesSection({
     </section>
   );
 }
+
+export default DataSourcesSection

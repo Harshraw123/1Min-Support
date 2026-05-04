@@ -1,7 +1,7 @@
 
 
 import { sql } from "drizzle-orm";
-import { pgTable, text } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 
 export const User = pgTable("user", {
@@ -107,3 +107,43 @@ export const sections = pgTable("sections", {
   status: text("status").notNull().default("active"),
   created_at: text("created_at").default(sql`now()`),
 });
+
+export const chatBots = pgTable("chatbots", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  website_url: text("website_url").notNull(),
+  user_email: varchar("user_email", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// 2. Metadata Table (For Color and Welcome Message)
+export const chatBotMetadata = pgTable("chatBotMetadata", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  user_email: text("user_email").notNull().unique(),
+  color: text("color").notNull().default("#4f39f6"),
+  welcome_message: text("welcome_message").default(
+    "Hi there, How can I help you today?"
+  ),
+  avatar_src: text("avatar_src"),
+  widget_id: text("widget_id").notNull().default(sql`gen_random_uuid()`),
+  created_at: text("created_at").default(sql`now()`),
+});
+
+
+export const teamMembers = pgTable("team_members", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  user_email: text("user_email").notNull(),
+  name: text("name").notNull(),
+  organization_id: text("organization_id").notNull(),
+  role: text("role").notNull().default("member"),
+  status: text("status").notNull().default("pending"),
+  created_at: text("created_at").default(sql`now()`),
+});
+
+
+
+

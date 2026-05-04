@@ -3,7 +3,6 @@ import { summarizeMarkdown, SUMMARIZE_PROMPT } from "@/lib/aiSummarize";
 import { db } from "@/db/client";
 import { knowledge as knowledgeTable } from "@/db/schema";
 import { getSession } from "@/lib/getSession";
-import { extractStructuredContent } from "@/lib/extractStructuredContent";
 import { Groq } from "groq-sdk";
 
 const groq = new Groq({
@@ -11,6 +10,10 @@ const groq = new Groq({
 });
 
 const MODEL_NAME = "llama-3.3-70b-versatile";
+
+// ✅ Safe char limit to stay under Groq free tier (12k TPM)
+// ~5000 chars ≈ 1250 tokens + prompt (~200) + response (4096) = ~5546 total
+const MAX_INPUT_CHARS = 5000;
 
 function buildMetaData(meta: Record<string, unknown>) {
   try {
@@ -25,7 +28,8 @@ export async function POST(req: NextRequest) {
     const session = await getSession();
     const userEmail = session?.email?.trim() || session?.user?.email?.trim();
     const workspaceId =
-      typeof session?.organization_id === "string" && session.organization_id.trim()
+      typeof session?.organization_id === "string" &&
+      session.organization_id.trim()
         ? session.organization_id.trim()
         : null;
 
@@ -65,11 +69,17 @@ export async function POST(req: NextRequest) {
         try {
           const rawText = await file.text();
 
+          // ✅ FIX: Truncate PDF text before sending to Groq
+          const safeText =
+            rawText.length > MAX_INPUT_CHARS
+              ? rawText.slice(0, MAX_INPUT_CHARS) + "\n\n[Content truncated...]"
+              : rawText;
+
           const prompt = `${SUMMARIZE_PROMPT}
 
 Extract and deeply summarize this PDF content into structured markdown:
 
-${rawText}`;
+${safeText}`;
 
           const result = await groq.chat.completions.create({
             model: MODEL_NAME,
@@ -83,7 +93,6 @@ ${rawText}`;
             `[PDF content from: ${file.name}]`;
         } catch (error) {
           console.error("[PDF_ERROR]", error);
-
           formattedContent = `[PDF uploaded: ${file.name} — processing failed]`;
         }
       } else {
@@ -121,15 +130,8 @@ ${rawText}`;
     // ═══════════════════════════════════════
     const body = await req.json();
 
-    const {
-      type,
-      content,
-      title,
-      url,
-      websiteUrl,
-      textTitle,
-      textContent,
-    } = body ?? {};
+    const { type, content, title, url, websiteUrl, textTitle, textContent } =
+      body ?? {};
 
     const finalUrl = url || websiteUrl;
     const finalTitle = title || textTitle;
@@ -146,11 +148,22 @@ ${rawText}`;
         );
       }
 
-      const encodedUrl = encodeURIComponent(finalUrl);
+      const scrapeToken = process.env.SCRAPE_DO_TOKEN;
+      if (!scrapeToken) {
+        return NextResponse.json(
+          { message: "Missing SCRAPE_DO_TOKEN" },
+          { status: 500 }
+        );
+      }
 
-      const scrapeRes = await fetch(
-        `https://api.scrape.do?token=${process.env.SCRAPE_DO_TOKEN}&url=${encodedUrl}`
-      );
+      const scrapeUrl = new URL("https://api.scrape.do/");
+      scrapeUrl.searchParams.set("token", scrapeToken);
+      scrapeUrl.searchParams.set("url", finalUrl);
+      scrapeUrl.searchParams.set("output", "markdown");
+
+      const scrapeRes = await fetch(scrapeUrl.toString(), {
+        method: "GET",
+      });
 
       if (!scrapeRes.ok) {
         return NextResponse.json(
@@ -159,15 +172,25 @@ ${rawText}`;
         );
       }
 
-      const rawHtml = await scrapeRes.text();
+      const rawMarkdown = (await scrapeRes.text()).trim();
+      if (!rawMarkdown) {
+        return NextResponse.json(
+          { message: "Scraping returned empty content" },
+          { status: 502 }
+        );
+      }
 
-      const extracted = extractStructuredContent(rawHtml);
+      // ✅ FIX: Truncate scraped markdown before sending to Groq
+      const safeMarkdown =
+        rawMarkdown.length > MAX_INPUT_CHARS
+          ? rawMarkdown.slice(0, MAX_INPUT_CHARS) + "\n\n[Content truncated...]"
+          : rawMarkdown;
 
       const prompt = `${SUMMARIZE_PROMPT}
 
-Convert this structured web content into clean markdown:
+Refine this scraped markdown into clean, structured markdown:
 
-${extracted.structured}`;
+${safeMarkdown}`;
 
       const result = await groq.chat.completions.create({
         model: MODEL_NAME,
@@ -193,9 +216,10 @@ ${extracted.structured}`;
             flow: "website",
             url: finalUrl,
             scrapeProvider: "scrape.do",
+            scrapeOutput: "markdown",
             extracted: {
-              // keep small; raw html is intentionally not stored
-              structuredLength: extracted.structured?.length ?? null,
+              markdownLength: rawMarkdown.length,
+              truncated: rawMarkdown.length > MAX_INPUT_CHARS,
             },
             model: MODEL_NAME,
             createdAt: new Date().toISOString(),
