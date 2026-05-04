@@ -21,7 +21,10 @@
   --color-destructive: oklch(0.577 0.245 27.325);
   --color-border: oklch(0.922 0.006 286.286);
   --color-input: oklch(0.922 0.006 286.286);
+
+  /* ✅ MAIN RING COLOR (PURPLE) */
   --color-ring: oklch(0.72 0.11 244);
+
   --color-sidebar: oklch(0.99 0.01 286);
   --color-sidebar-foreground: oklch(0.208 0.042 265.755);
   --color-sidebar-primary: oklch(0.45 0.22 290);
@@ -30,11 +33,7 @@
   --color-sidebar-accent-foreground: oklch(0.278 0.026 256.848);
   --color-sidebar-border: oklch(0.922 0.006 286.286);
   --color-sidebar-ring: oklch(0.45 0.22 290);
-  --color-chart-1: oklch(0.845 0.143 164.978);
-  --color-chart-2: oklch(0.696 0.17 162.48);
-  --color-chart-3: oklch(0.596 0.145 163.225);
-  --color-chart-4: oklch(0.508 0.118 165.612);
-  --color-chart-5: oklch(0.432 0.095 166.913);
+
   --radius-sm: calc(0.625rem * 0.6);
   --radius-md: calc(0.625rem * 0.8);
   --radius-lg: 0.625rem;
@@ -42,17 +41,13 @@
   --radius-2xl: calc(0.625rem * 1.8);
   --radius-3xl: calc(0.625rem * 2.2);
   --radius-4xl: calc(0.625rem * 2.6);
+
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-heading);
 }
 
 @layer base {
-  /*
-   * Token aliases.
-   * Some UI libs read raw CSS vars like `--popover` / `--border` / `--radius`,
-   * while Tailwind v4 tokens are defined as `--color-*` in `@theme`.
-   */
   :root {
     --background: var(--color-background);
     --foreground: var(--color-foreground);
@@ -85,33 +80,76 @@
     --radius: var(--radius-lg);
   }
 
-  * {
-    @apply border-border outline-ring/50;
+  /* REMOVE DEFAULT BLUE FOCUS */
+  :focus {
+    outline: none;
   }
+
+  :focus-visible {
+    outline: none;
+  }
+
+  /* GLOBAL BORDER + BASE */
+  * {
+    @apply border-border;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
+  }
+
+  /* ✅ FOCUS RING REMOVED */
+  input:focus,
+  textarea:focus,
+  select:focus,
+  button:focus {
+    outline: none;
+    border-color: inherit;
+    box-shadow: none;
+  }
+
+  /* Tailwind ring override */
+  * {
+    --tw-ring-color: var(--ring);
+  }
+
+  /* ✅ TEXT SELECTION */
+  ::selection {
+    background: oklch(0.9 0.08 290);
+    color: oklch(0.2 0.04 265);
+  }
+
+  ::-moz-selection {
+    background: oklch(0.9 0.08 290);
+    color: oklch(0.2 0.04 265);
   }
 
   .glass {
     @apply bg-white/75 backdrop-blur-xl border border-slate-200/70;
     box-shadow: 0 8px 32px oklch(0.145 0 0 / 8%), 0 2px 8px oklch(0.145 0 0 / 4%);
   }
+
   .glass-strong {
     @apply bg-white/92 backdrop-blur-2xl border border-slate-200/80;
     box-shadow: 0 16px 48px oklch(0.145 0 0 / 12%), 0 4px 16px oklch(0.145 0 0 / 6%);
   }
+
   .text-gradient {
     @apply bg-clip-text text-transparent bg-linear-to-r from-primary via-primary/95 to-brand-orange;
   }
+
   .hero-badge {
     @apply inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-medium text-primary backdrop-blur-sm;
   }
+
   .chat-card {
     @apply flex flex-col rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xl;
   }
+
   .chat-bubble-in {
     @apply rounded-xl border border-slate-200/90 bg-white px-4 py-3 text-sm text-foreground/85 shadow-sm;
   }
@@ -131,8 +169,12 @@
     animation: fade-in 0.8s ease-out forwards;
   }
 }
+
+/* SPINNER */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .spinner-ring {

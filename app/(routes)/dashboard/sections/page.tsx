@@ -401,11 +401,11 @@ const Page = () => {
                 {!isNewSection && editingSectionRef.current && (
                   <Button
                     type="button"
-                    variant="destructive"
+               variant="outline"
                     disabled={isSaving}
                     onClick={() => promptDelete(editingSectionRef.current!)}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="h-4 text-red-500 w-4 mr-2" />
                     Delete
                   </Button>
                 )}

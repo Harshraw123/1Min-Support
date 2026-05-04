@@ -6,69 +6,209 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Palette, Save, Check, ChevronDown } from "lucide-react";
+import { Palette, Save, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ChatSimulator from "@/app/components/ChatSimulator";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import EmbedCodeConfig from "@/app/components/embedCodeConfig";
+import EmbedCodeConfig from "@/app/components/EmbedCodeConfig";
 
 import { COLOR_PRESETS } from "@/lib/ChatBotmetaData/chatbotMetaData";
-import { AVATAR_PRESETS, AvatarPickerProps } from "@/lib/ChatBotmetaData/chatbotMetaData";
-import Image from "next/image";
+import { AVATAR_PRESETS } from "@/lib/ChatBotmetaData/chatbotMetaData";
 import AvatarSelector from "@/app/components/AvatarSelector";
 
 type Section = { id: string; name: string };
 type Message = { role: "user" | "assistant"; content: string };
+type SectionRecord = {
+  id: string;
+  name: string;
+  description: string | null;
+  source_ids: string | null;
+  tone: string | null;
+  allowed_topics: string | null;
+  blocked_topics: string | null;
+  fallback_behavior: string | null;
+};
 
 const ChatbotPage = () => {
-  const [primaryColor, setPrimaryColor] = useState("#10b981");
+  const [primaryColor, setPrimaryColor] = useState("#111827");
   const [avatarSrc, setAvatarSrc] = useState(AVATAR_PRESETS[0].src);
   const [welcomeMessage, setWelcomeMessage] = useState("Hi there, How can I help you today?");
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingMeta, setIsLoadingMeta] = useState(true);
 
-  const widgetId = "a6afa329-a3c5-4104-b71b-e23717929846";
+  const [widgetId, setWidgetId] = useState("");
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [sections] = useState<Section[]>([
-    { id: "faq", name: "FAQ" },
-    { id: "billing", name: "Billing" },
-    { id: "support", name: "Support" },
-  ]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [sectionRecords, setSectionRecords] = useState<SectionRecord[]>([]);
 
   const scrollViewportRef = useRef<HTMLDivElement>(null);
-  const responseTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     scrollViewportRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isTyping]);
 
   useEffect(() => {
-    return () => {
-      if (responseTimeoutRef.current) window.clearTimeout(responseTimeoutRef.current);
+    const controller = new AbortController();
+
+    const fetchMetadata = async () => {
+      try {
+        setIsLoadingMeta(true);
+        const response = await fetch("/api/chatbot/metadata/fetch", {
+          method: "GET",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          if (response.status !== 401) {
+            toast.error("Could not load chatbot settings");
+          }
+          return;
+        }
+
+        const payload = await response.json();
+        const data = payload?.data ?? payload;
+
+        const safeColor =
+          typeof data?.primaryColor === "string" && data.primaryColor.trim()
+            ? data.primaryColor.trim()
+            : "#111827";
+        const safeWelcome =
+          typeof data?.welcomeMessage === "string" && data.welcomeMessage.trim()
+            ? data.welcomeMessage
+            : "Hi there, How can I help you today?";
+        const safeAvatar =
+          typeof data?.avatarSrc === "string" && data.avatarSrc.trim()
+            ? data.avatarSrc
+            : AVATAR_PRESETS[0].src;
+
+        setPrimaryColor(safeColor);
+        setWelcomeMessage(safeWelcome);
+        setAvatarSrc(safeAvatar);
+        if (typeof data?.widgetId === "string" && data.widgetId.trim()) {
+          setWidgetId(data.widgetId);
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Error loading chatbot metadata:", error);
+          toast.error("Failed to load chatbot configuration");
+        }
+      } finally {
+        setIsLoadingMeta(false);
+      }
     };
+
+    fetchMetadata();
+
+    return () => controller.abort();
   }, []);
 
-  const handleSend = () => {
-    if (!activeSection) return;
-    if (isTyping) return;
-    if (!input.trim()) return;
-    if (responseTimeoutRef.current) {
-      window.clearTimeout(responseTimeoutRef.current);
-      responseTimeoutRef.current = null;
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchSections = async () => {
+      try {
+        const response = await fetch("/api/sections/fetch", {
+          method: "GET",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          if (response.status !== 401) {
+            toast.error("Could not load chatbot sections");
+          }
+          return;
+        }
+
+        const rows = (await response.json()) as SectionRecord[];
+        const normalized = Array.isArray(rows)
+          ? rows.filter((row) => typeof row?.id === "string" && typeof row?.name === "string")
+          : [];
+
+        setSectionRecords(normalized);
+        setSections(normalized.map((row) => ({ id: row.id, name: row.name })));
+
+        setActiveSection((prev) => {
+          if (normalized.length === 0) return null;
+          if (prev && normalized.some((row) => row.id === prev)) return prev;
+          return normalized[0].id;
+        });
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Error loading sections:", error);
+          toast.error("Failed to load sections");
+        }
+      }
+    };
+
+    fetchSections();
+
+    return () => controller.abort();
+  }, []);
+
+  const handleSend = async () => {
+    if (!activeSection || isTyping) return;
+    const trimmedInput = input.trim();
+    if (!trimmedInput) return;
+
+    const userMsg: Message = { role: "user", content: trimmedInput };
+    const nextMessages = [...messages, userMsg];
+    const selectedSection = sectionRecords.find((section) => section.id === activeSection);
+
+    let sourceIds: string[] = [];
+    if (selectedSection?.source_ids) {
+      try {
+        const parsed = JSON.parse(selectedSection.source_ids) as unknown;
+        if (Array.isArray(parsed)) {
+          sourceIds = parsed.filter((id): id is string => typeof id === "string" && id.trim().length > 0);
+        }
+      } catch {
+        sourceIds = [];
+      }
     }
-    setMessages((prev) => [...prev, { role: "user", content: input }]);
+
+    setMessages(nextMessages);
     setInput("");
     setIsTyping(true);
-    responseTimeoutRef.current = window.setTimeout(() => {
+
+    try {
+      const response = await fetch("/api/chat/test", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: nextMessages,
+          section_id: activeSection,
+          knowledge_source_ids: sourceIds,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chat request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const assistantMessage =
+        typeof data?.message === "string" && data.message.trim()
+          ? data.message.trim()
+          : "Sorry, I could not generate a response.";
+
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "This is a simulated response based on your knowledge base." },
+        { role: "assistant", content: assistantMessage },
       ]);
-      setIsTyping(false);
-    }, 1200);
+    } catch (error) {
+      console.error("Chat Error:", error);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Sorry, something went wrong. Please try again." },
+      ]);
+    } finally {
+      setIsTyping(false); // Remove the typing indicator
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -80,26 +220,50 @@ const ChatbotPage = () => {
 
   const handleSectionClick = (id: string) => {
     setActiveSection(id);
-    toast.info(`Switched to ${id} context`);
+    const sectionName = sections.find((section) => section.id === id)?.name ?? id;
+    toast.info(`Switched to ${sectionName} context`);
   };
 
   const handleReset = () => {
-    if (responseTimeoutRef.current) {
-      window.clearTimeout(responseTimeoutRef.current);
-      responseTimeoutRef.current = null;
-    }
     setMessages([]);
-    setActiveSection(null);
     setIsTyping(false);
     toast.success("Chat reset");
   };
 
-  const handleUpdateConfig = () => {
-    setIsSaving(true);
-    setTimeout(() => {
-      toast.success("Chatbot configuration updated!");
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+
+      const res = await fetch("/api/chatbot/metadata/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          primaryColor: primaryColor.trim() || "#111827",
+          welcomeMessage: welcomeMessage.trim() || "Hi there, How can I help you today?",
+          avatarSrc,
+        }),
+      });
+
+      if (!res.ok) {
+        toast.error("Failed to save changes. Please try again.");
+        return;
+      }
+
+      const updatedData = await res.json();
+      const data = updatedData?.data ?? updatedData;
+      if (data?.primaryColor) setPrimaryColor(data.primaryColor);
+      if (data?.welcomeMessage) setWelcomeMessage(data.welcomeMessage);
+      if (data?.avatarSrc) setAvatarSrc(data.avatarSrc);
+      if (data?.widgetId) setWidgetId(data.widgetId);
+      toast.success("Settings saved successfully!");
+    } catch (error) {
+      console.error("Error in handleSave:", error);
+      toast.error("A network error occurred.");
+    } finally {
       setIsSaving(false);
-    }, 800);
+    }
   };
 
   return (
@@ -224,12 +388,12 @@ const ChatbotPage = () => {
               {/* Save button */}
               <div className="shrink-0 border-t border-white/20 px-4 py-3">
                 <Button
-                  onClick={handleUpdateConfig}
-                  disabled={isSaving}
+                  onClick={handleSave}
+                  disabled={isSaving || isLoadingMeta}
                   className="h-9 w-full gap-2 rounded-xl text-primary-foreground shadow-md transition-all hover:shadow-lg active:scale-[0.99]"
                 >
                   <Save className="h-4 w-4" />
-                  {isSaving ? "Saving…" : "Save Changes"}
+                  {isSaving ? "Saving…" : isLoadingMeta ? "Loading…" : "Save Changes"}
                 </Button>
               </div>
             </Card>

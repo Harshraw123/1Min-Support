@@ -1,9 +1,11 @@
 import {
   BasicsSection,
-  DataSourcesSection,
+
   AIConfigSection,
   type SectionFormFieldsSharedProps,
 } from "@/lib/section_MetaData";
+import DataSourcesSection from "@/lib/section_MetaData/DataSourceSection";
+
 
 const SectionFormFields = (props: SectionFormFieldsSharedProps) => {
   return (

@@ -47,24 +47,17 @@ const AvatarSelector = ({
         className={cn(
           "group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
           "bg-muted ring-offset-2 ring-offset-background transition-all duration-200",
-          "hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          active ? "ring-2" : "ring-1 ring-border"
+          "hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         )}
-        style={
-          active
-            ? ({ ["--tw-ring-color"]: accent } as React.CSSProperties)
-            : undefined
-        }
       >
+        <Image
+          src={a.src}
+          alt={a.name}
+          width={32}
+          height={32}
+          className="h-8 w-8 rounded-full object-cover"
+        />
 
-
-<Image
-  src={a.src}
-  alt={a.name}
-  width={32}
-  height={32}
-  className="h-8 w-8 rounded-full object-cover"
-/>
         {active && (
           <span
             className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background"
@@ -104,25 +97,19 @@ const AvatarSelector = ({
                 className={cn(
                   "group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
                   "bg-muted text-muted-foreground",
-                  "ring-1 ring-border ring-offset-2 ring-offset-background transition-all duration-200",
+                  "ring-offset-2 ring-offset-background transition-all duration-200",
                   "hover:bg-accent hover:text-accent-foreground",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  activeInOverflow && "ring-2"
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 )}
-                style={
-                  activeInOverflow
-                    ? ({ ["--tw-ring-color"]: accent } as React.CSSProperties)
-                    : undefined
-                }
               >
                 {activeInOverflow && activeOverflowAvatar ? (
-             <Image
-             src={activeOverflowAvatar.src}
-             alt={activeOverflowAvatar.name}
-             width={32}
-             height={32}
-             className="h-8 w-8 rounded-full object-cover"
-           />
+                  <Image
+                    src={activeOverflowAvatar.src}
+                    alt={activeOverflowAvatar.name}
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
                 ) : (
                   <span className="text-xs font-semibold text-foreground">
                     +{overflowAvatars.length}
