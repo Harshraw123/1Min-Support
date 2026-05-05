@@ -8,12 +8,12 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Palette, Save, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ChatSimulator from "@/app/components/ChatSimulator";
-import EmbedCodeConfig from "@/app/components/EmbedCodeConfig";
+import ChatSimulator from "@/components/ChatSimulator";
+import EmbedCodeConfig from "@/components/EmbedCodeConfig";
 
 import { COLOR_PRESETS } from "@/lib/ChatBotmetaData/chatbotMetaData";
 import { AVATAR_PRESETS } from "@/lib/ChatBotmetaData/chatbotMetaData";
-import AvatarSelector from "@/app/components/AvatarSelector";
+import AvatarSelector from "@/components/AvatarSelector";
 
 type Section = { id: string; name: string };
 type Message = { role: "user" | "assistant"; content: string };
