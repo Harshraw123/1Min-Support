@@ -253,7 +253,6 @@ export default function AddKnowledgeModal({
             <KnowledgeTabs
               selected={type}
               onChange={handleTabChange}
-              disabled={isSubmitting}
             />
           </div>
 

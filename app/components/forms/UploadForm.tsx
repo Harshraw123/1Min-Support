@@ -6,10 +6,12 @@ export default function UploadForm({
   file,
   setFile,
   error,
+  disabled,
 }: {
   file: File | null;
   setFile: (f: File | null) => void;
   error?: string;
+  disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -21,6 +23,7 @@ export default function UploadForm({
         accept=".pdf,.docx,.txt,.md"
         className="hidden"
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        disabled={disabled}
       />
 
       {file ? (
@@ -38,6 +41,7 @@ export default function UploadForm({
             type="button"
             onClick={() => setFile(null)}
             className="text-muted-foreground hover:text-foreground transition-colors"
+            disabled={disabled}
           >
             <X size={14} />
           </button>
@@ -47,6 +51,7 @@ export default function UploadForm({
           type="button"
           onClick={() => inputRef.current?.click()}
           className="flex flex-col items-center gap-2 py-7 rounded-[10px] border border-dashed border-border/60 bg-muted/40 hover:bg-muted hover:border-border transition-colors cursor-pointer w-full"
+          disabled={disabled}
         >
           <UploadCloud size={20} className="text-muted-foreground" />
           <div className="text-center">

@@ -9,7 +9,7 @@ export async function GET() {
     const user = await getSession();
     const email = user?.email?.trim() || user?.user?.email?.trim();
 
-    if (!email) {
+    if (!email || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

@@ -9,12 +9,14 @@ export default function TextForm({
   setTitle,
   setContent,
   error,
+  disabled,
 }: {
   title: string;
   content: string;
   setTitle: (v: string) => void;
   setContent: (v: string) => void;
   error?: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-4 min-h-0">
@@ -26,6 +28,7 @@ export default function TextForm({
           placeholder="e.g. Product FAQ"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          disabled={disabled}
         />
       </div>
       <div className="flex flex-col gap-1.5 min-h-0 flex-1">
@@ -38,6 +41,7 @@ export default function TextForm({
           onChange={(e) => setContent(e.target.value)}
           className="resize-none flex-1 min-h-[96px] max-h-[300px] overflow-y-auto"
           required
+          disabled={disabled}
         />
       </div>
       {error && (

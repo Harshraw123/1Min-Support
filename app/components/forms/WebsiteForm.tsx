@@ -6,10 +6,12 @@ export default function WebsiteForm({
   value,
   onChange,
   error,
+  disabled = false,
 }: {
   value: string;
   onChange: (v: string) => void;
   error: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -20,7 +22,8 @@ export default function WebsiteForm({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="https://example.com"
-        className={error ? "border-destructive " : ""}
+        disabled={disabled}
+        className={error ? "border-destructive" : ""}
       />
       {error && (
         <p className="text-[12px] text-destructive flex items-center gap-1">
