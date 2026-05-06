@@ -67,7 +67,22 @@ export async function POST(req: NextRequest) {
 
     switch (event.type) {
       case "user.organization_membership_created": {
-        // Invitation created: keep member in pending state.
+        const payload = event.data as MembershipEventPayload;
+        const { email, organizationId } = extractMemberIdentity(payload);
+
+        if (!email || !organizationId) {
+          break;
+        }
+
+        await db
+          .update(teamMembers)
+          .set({ status: "pending" })
+          .where(
+            and(
+              eq(teamMembers.user_email, email),
+              eq(teamMembers.organization_id, organizationId)
+            )
+          );
         break;
       }
       case "user.organization_membership_updated":

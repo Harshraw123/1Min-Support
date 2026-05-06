@@ -43,14 +43,29 @@ export async function POST(req: Request) {
     const body = (await req.json().catch(() => ({}))) as {
       email?: string;
       name?: string;
+      roles?: string[];
     };
 
     const email =
       typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const name = typeof body.name === "string" ? body.name.trim() : "";
+    const requestedRoles = Array.isArray(body.roles)
+      ? body.roles
+          .filter((role): role is string => typeof role === "string")
+          .map((role) => role.trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+    const allowedRoles = new Set(["admin", "member"]);
+    const roles = requestedRoles.length > 0 ? requestedRoles : ["member"];
 
     if (!email) {
       return NextResponse.json({ message: "Email is required" }, { status: 400 });
+    }
+    if (!roles.every((role) => allowedRoles.has(role))) {
+      return NextResponse.json(
+        { message: "Invalid role. Allowed roles: admin, member" },
+        { status: 400 }
+      );
     }
 
     const [existing] = await db
@@ -71,6 +86,8 @@ export async function POST(req: Request) {
     }
 
     const displayName = name || email.split("@")[0] || "Member";
+    const [firstName, ...lastNameParts] = displayName.split(/\s+/).filter(Boolean);
+    const lastName = lastNameParts.join(" ");
 
     // Step 1: DB mein insert karo (pending status)
     const [member] = await db
@@ -79,7 +96,7 @@ export async function POST(req: Request) {
         user_email: email,
         name: displayName,
         organization_id: organizationId,
-        role: "member",
+        role: roles[0],
         status: "pending",
       })
       .returning();
@@ -88,23 +105,29 @@ export async function POST(req: Request) {
     try {
       await scalekit.user.createUserAndMembership(organizationId, {
         email,
+        sendInvitationEmail: true,
         userProfile: {
-          firstName: displayName,
+          firstName: firstName || displayName,
+          ...(lastName ? { lastName } : {}),
         },
-      });
+        membership: {
+          roles,
+        },
+      } as never);
     } catch (inviteError) {
       if (isScalekitAlreadyExistsError(inviteError)) {
         // User already exists in ScaleKit, so keep DB row and mark as active to avoid blocking flow.
         await db
           .update(teamMembers)
-          .set({ status: "active" })
+          .set({ status: "accepted", role: roles[0] })
           .where(eq(teamMembers.id, member.id));
 
         return NextResponse.json({
           message: "Member already exists and has been added to the team",
           member: {
             ...member,
-            status: "active",
+            status: "accepted",
+            role: roles[0],
           },
         });
       }

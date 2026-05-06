@@ -1,8 +1,9 @@
 import { db } from "@/db/client";
 import { metadata } from "@/db/schema";
+import { getSession } from "@/lib/getSession";
+import { scalekit } from "@/lib/scalekit";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/getSession";
 import { eq } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
@@ -17,11 +18,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const companyName = String(business_name).trim();
+
+    const normalizedExternalLinks =
+      external_links === null || external_links === undefined
+        ? null
+        : typeof external_links === "string"
+          ? external_links.trim()
+            ? (() => {
+                try {
+                  return JSON.parse(external_links);
+                } catch {
+                  return [external_links.trim()];
+                }
+              })()
+            : null
+          : external_links;
+
     const payload = {
-      business_name: String(business_name).trim(),
+      business_name: companyName,
       website_url: String(website_url).trim(),
-      external_links: external_links ? String(external_links).trim() : null,
+      external_links: normalizedExternalLinks,
     };
+
+    const organizationId =
+      typeof session?.organization_id === "string" && session.organization_id.trim()
+        ? session.organization_id.trim()
+        : null;
 
     const [existing] = await db
       .select({ id: metadata.id })
@@ -42,8 +65,27 @@ export async function POST(req: NextRequest) {
           })
           .returning();
 
+    if (organizationId && companyName) {
+      try {
+        console.log("Creating org with name:", companyName);
+        const updatedOrg = await scalekit.organization.updateOrganization(organizationId, {
+          displayName: companyName,
+        });
+        console.log(
+          "Scalekit response name:",
+          updatedOrg?.organization?.displayName ?? null
+        );
+      } catch (scalekitError) {
+        console.error("SCALEKIT_ORG_NAME_UPDATE_ERROR", {
+          organizationId,
+          companyName,
+          scalekitError,
+        });
+      }
+    }
+
     // Set a cookie to indicate metadata is configured
-    (await cookies()).set("metadata", JSON.stringify({ business_name }), {
+    (await cookies()).set("metadata", JSON.stringify({ business_name: companyName }), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production", 
         //HTTP  →  Cookie visible: {"business_name":"MyShop"}  ← hacker देख सकता है

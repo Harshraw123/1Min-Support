@@ -7,7 +7,11 @@ import { NextResponse } from "next/server";
 export async function PUT(req: Request) {
   try {
     const user = await getSession();
-    if (!user?.email) {
+    const workspaceId =
+      typeof user?.organization_id === "string" && user.organization_id.trim()
+        ? user.organization_id.trim()
+        : null;
+    if (!user || !workspaceId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -26,7 +30,7 @@ export async function PUT(req: Request) {
     const [existing] = await db
       .select()
       .from(chatBotMetadata)
-      .where(eq(chatBotMetadata.user_email, user.email));
+      .where(eq(chatBotMetadata.chatbot_id, workspaceId));
 
     if (existing) {
       const [updated] = await db
@@ -36,7 +40,7 @@ export async function PUT(req: Request) {
           welcome_message: welcomeMessage,
           avatar_src: avatarSrc,
         })
-        .where(eq(chatBotMetadata.user_email, user.email))
+        .where(eq(chatBotMetadata.chatbot_id, workspaceId))
         .returning();
 
       return NextResponse.json({
@@ -52,7 +56,7 @@ export async function PUT(req: Request) {
     const [created] = await db
       .insert(chatBotMetadata)
       .values({
-        user_email: user.email,
+        chatbot_id: workspaceId,
         color: primaryColor,
         welcome_message: welcomeMessage,
         avatar_src: avatarSrc,

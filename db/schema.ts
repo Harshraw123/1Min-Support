@@ -1,91 +1,83 @@
-
-
 import { sql } from "drizzle-orm";
-import { pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb } from "drizzle-orm/pg-core";
 
-
-export const User = pgTable("user", {
-  /* Unique identifier for the user using UUID */
+/**
+ * ================================
+ * USERS
+ * ================================
+ */
+export const users = pgTable("users", {
   id: text("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-    
-  /* The ScaleKit Organization ID extracted from claims */
+
   organization_id: text("organization_id").notNull(),
-  
 
   name: text("name"),
   email: text("email").notNull().unique(),
   image: text("image"),
-  
 
-  created_at: text("created_at").default(sql`now()`),
+  created_at: timestamp("created_at").defaultNow(),
 });
 
-// Drizzle mein sql ek tag hai jo plain text ko "Database Command" mein badalta hai.
-
-// Jab aap Postgres use karte hain, toh database ke apne kuch functions hote hain (jaise time nikalne ke liye now() ya unique ID ke liye gen_random_uuid()).
-
-// Agar aap sirf "now()" likhenge, toh Drizzle use ek normal text (string) samjhega. Lekin jab aap sqlnow()`` likhte hain, toh Drizzle ko pata chalta hai ki:
-
-// "Bhai, ye koi text nahi hai, ye Postgres ka order hai jo seedha database par chalana hai."
-
-
+/**
+ * ================================
+ * BUSINESS METADATA
+ * ================================
+ */
 export const metadata = pgTable("metadata", {
   id: text("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
+
   user_email: text("user_email").notNull(),
+
   business_name: text("business_name").notNull(),
   website_url: text("website_url").notNull(),
-  external_links: text("external_links"),
-  created_at: text("created_at").default(sql`now()`),
+
+  external_links: jsonb("external_links"), // 🔥 instead of text
+
+  created_at: timestamp("created_at").defaultNow(),
 });
 
-
+/**
+ * ================================
+ * KNOWLEDGE BASE
+ * ================================
+ */
 export const knowledge = pgTable("knowledge", {
-  
-  // Unique identifier — same pattern as your User & metadata tables
   id: text("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
 
-
-  user_email: text("user_email").notNull(),
-
-
   workspace_id: text("workspace_id").notNull(),
 
-  // Display name of the knowledge source
-  // e.g. "Company Pricing Page" or the filename
   title: text("title").notNull(),
-
-  // Summarized markdown content (processed by Gemini model)
-
   content: text("content").notNull(),
 
-  // Type of knowledge source
-  // 'website' | 'text' | 'upload'
-  type: text("type").notNull(),
+  type: text("type").notNull(), // website | text | upload
 
-  status:text('status').notNull().default('active'),
+  status: text("status").notNull().default("active"),
 
-  
-  // Used for duplicate URL checking in the modal
   source_url: text("source_url"),
 
-  meta_data:text('meta_data'),
+  meta_data: jsonb("meta_data"), // 🔥 instead of text
 
-
-  created_at: text("created_at").default(sql`now()`),
+  created_at: timestamp("created_at").defaultNow(),
 });
 
+/**
+ * ================================
+ * SECTIONS (AI LAYERS)
+ * ================================
+ */
 export const sections = pgTable("sections", {
   id: text("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
 
-  user_email: text("user_email").notNull(),
+  chatbot_id: text("chatbot_id").notNull(), // 🔥 MUST
+
   workspace_id: text("workspace_id").notNull(),
 
   name: text("name").notNull(),
@@ -94,56 +86,91 @@ export const sections = pgTable("sections", {
   tone: text("tone").notNull().default("neutral"),
   scope_label: text("scope_label").notNull().default("general"),
 
-  allowed_topics: text("allowed_topics"),
-  blocked_topics: text("blocked_topics"),
-  fallback_behavior: text("fallback_behavior").notNull().default("escalate"),
+  allowed_topics: jsonb("allowed_topics"),
+  blocked_topics: jsonb("blocked_topics"),
 
-  /**
-   * JSON string array of knowledge ids.
-   * Stored as text to keep schema simple and avoid jsonb dependency here.
-   */
-  source_ids: text("source_ids"),
+  fallback_behavior: text("fallback_behavior")
+    .notNull()
+    .default("escalate"),
 
   status: text("status").notNull().default("active"),
-  created_at: text("created_at").default(sql`now()`),
+
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
 });
 
-export const chatBots = pgTable("chatbots", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  website_url: text("website_url").notNull(),
-  user_email: varchar("user_email", { length: 255 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// 2. Metadata Table (For Color and Welcome Message)
-export const chatBotMetadata = pgTable("chatBotMetadata", {
+/**
+ * ================================
+ * CHATBOTS
+ * ================================
+ */
+export const chatbots = pgTable("chatbots", {
   id: text("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  user_email: text("user_email").notNull().unique(),
+
+  name: text("name").notNull(),
+  website_url: text("website_url").notNull(),
+
+  workspace_id: text("workspace_id").notNull(),
+
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+/**
+ * ================================
+ * CHATBOT UI CONFIG (WIDGET)
+ * ================================
+ */
+export const chat_bot_metadata = pgTable("chat_bot_metadata", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+
+  widget_id: text("widget_id")
+    .notNull()
+    .unique()
+    .default(sql`gen_random_uuid()`),
+
+  chatbot_id: text("chatbot_id").notNull(), // 🔥 relation
+
+  name: text("name"),
+
   color: text("color").notNull().default("#4f39f6"),
   welcome_message: text("welcome_message").default(
     "Hi there, How can I help you today?"
   ),
+
   avatar_src: text("avatar_src"),
-  widget_id: text("widget_id").notNull().default(sql`gen_random_uuid()`),
-  created_at: text("created_at").default(sql`now()`),
+
+  allowed_domain: text("allowed_domain"),
+
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
 });
 
-
-export const teamMembers = pgTable("team_members", {
+/**
+ * ================================
+ * TEAM MEMBERS
+ * ================================
+ */
+export const team_members = pgTable("team_members", {
   id: text("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
+
+  organization_id: text("organization_id").notNull(),
+
   user_email: text("user_email").notNull(),
   name: text("name").notNull(),
-  organization_id: text("organization_id").notNull(),
+
   role: text("role").notNull().default("member"),
   status: text("status").notNull().default("pending"),
-  created_at: text("created_at").default(sql`now()`),
+
+  created_at: timestamp("created_at").defaultNow(),
 });
 
-
-
-
+// Backward-compatible aliases for older imports.
+export const User = users;
+export const teamMembers = team_members;
+export const chatBotMetadata = chat_bot_metadata;

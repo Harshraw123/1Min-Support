@@ -26,7 +26,12 @@ export async function GET() {
     const rows = await db
       .select()
       .from(sectionsTable)
-      .where(and(eq(sectionsTable.user_email, userEmail), eq(sectionsTable.workspace_id, workspaceId)));
+      .where(
+        and(
+          eq(sectionsTable.chatbot_id, workspaceId),
+          eq(sectionsTable.workspace_id, workspaceId)
+        )
+      );
 
     return NextResponse.json(rows, { status: 200 });
   } catch (error) {

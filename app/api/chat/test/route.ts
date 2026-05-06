@@ -15,14 +15,19 @@ const MODEL = "llama-3.3-70b-versatile";// llama 3 8b — "3b versatile" is llam
 export async function POST(req: NextRequest) {
   try {
     const user = await getSession();
-    const userEmail = user?.email?.trim() || user?.user?.email?.trim();
     const workspaceId =
       typeof user?.organization_id === "string" && user.organization_id.trim()
         ? user.organization_id.trim()
         : null;
 
-    if (!userEmail) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!workspaceId) {
+      return NextResponse.json(
+        { error: "Missing workspace context (organization_id)" },
+        { status: 400 }
+      );
     }
 
     const body = await req.json();
@@ -49,30 +54,12 @@ export async function POST(req: NextRequest) {
         .where(
           and(
             eq(sectionsTable.id, sectionId),
-            eq(sectionsTable.user_email, userEmail),
-            workspaceId ? eq(sectionsTable.workspace_id, workspaceId) : eq(sectionsTable.user_email, userEmail)
+            eq(sectionsTable.chatbot_id, workspaceId),
+            eq(sectionsTable.workspace_id, workspaceId)
           )
         );
 
       if (section) {
-        let sectionSourceIds: string[] = [];
-        if (section.source_ids) {
-          try {
-            const parsed = JSON.parse(section.source_ids) as unknown;
-            if (Array.isArray(parsed)) {
-              sectionSourceIds = parsed.filter(
-                (id): id is string => typeof id === "string" && id.trim().length > 0
-              );
-            }
-          } catch {
-            sectionSourceIds = [];
-          }
-        }
-
-        if (sectionSourceIds.length > 0) {
-          effectiveSourceIds = sectionSourceIds;
-        }
-
         const sectionLines: string[] = [];
         if (section.name) sectionLines.push(`Section: ${section.name}`);
         if (section.description) sectionLines.push(`Purpose: ${section.description}`);
@@ -92,7 +79,7 @@ export async function POST(req: NextRequest) {
         .from(knowledgeTable)
         .where(
           and(
-            eq(knowledgeTable.user_email, userEmail),
+            eq(knowledgeTable.workspace_id, workspaceId),
             inArray(knowledgeTable.id, effectiveSourceIds)
           )
         );
