@@ -32,6 +32,13 @@ const TeamSection = () => {
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
 
+  const formatMemberStatus = (status: string) => {
+    const normalized = status.trim().toLowerCase();
+    if (normalized === "pending") return "invited";
+    if (normalized === "accepted" || normalized === "active") return "accepted";
+    return normalized || "unknown";
+  };
+
   const fetchTeam = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -57,6 +64,14 @@ const TeamSection = () => {
 
   useEffect(() => {
     void fetchTeam();
+  }, [fetchTeam]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void fetchTeam();
+    }, 20000);
+
+    return () => clearInterval(interval);
   }, [fetchTeam]);
 
   const handleAddMember = async (e: React.FormEvent) => {
@@ -237,7 +252,7 @@ const TeamSection = () => {
                       {member.role}
                     </span>
                     <span className="rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      {member.status}
+                      {formatMemberStatus(member.status)}
                     </span>
                     <Button
                       type="button"

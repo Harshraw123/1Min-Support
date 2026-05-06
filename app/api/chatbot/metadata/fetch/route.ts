@@ -7,15 +7,19 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request) {
   try {
     const user = await getSession();
+    const workspaceId =
+      typeof user?.organization_id === "string" && user.organization_id.trim()
+        ? user.organization_id.trim()
+        : null;
 
-    if (!user || !user.email) {
+    if (!user || !workspaceId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const [record] = await db
       .select()
       .from(chatBotMetadata)
-      .where(eq(chatBotMetadata.user_email, user.email));
+      .where(eq(chatBotMetadata.chatbot_id, workspaceId));
 
     if (!record) {
       return NextResponse.json(

@@ -7,14 +7,18 @@ import { eq } from "drizzle-orm";
 export async function GET() {
   try {
     const user = await getSession();
-    if (!user?.email) {
+    const workspaceId =
+      typeof user?.organization_id === "string" && user.organization_id.trim()
+        ? user.organization_id.trim()
+        : null;
+    if (!user || !workspaceId) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const rows = await db
       .select()
       .from(knowledgeTable)
-      .where(eq(knowledgeTable.user_email, user.email));
+      .where(eq(knowledgeTable.workspace_id, workspaceId));
 
     return NextResponse.json(rows, { status: 200 });
   } catch (error) {

@@ -30,7 +30,13 @@ export async function DELETE(req: NextRequest) {
 
     const [deleted] = await db
       .delete(sections)
-      .where(and(eq(sections.id, id), eq(sections.user_email, userEmail), eq(sections.workspace_id, workspaceId)))
+      .where(
+        and(
+          eq(sections.id, id),
+          eq(sections.chatbot_id, workspaceId),
+          eq(sections.workspace_id, workspaceId)
+        )
+      )
       .returning();
 
     if (!deleted) return NextResponse.json({ message: "Section not found" }, { status: 404 });
