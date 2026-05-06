@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Mail, User, Loader2 } from "lucide-react";
+import { Plus, Mail, User, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,7 @@ const TeamSection = () => {
   const [team, setTeam] = useState<TeamMemberRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
 
@@ -86,7 +87,7 @@ const TeamSection = () => {
         throw new Error(result.message || "Failed to add member");
       }
 
-      toast.success("Member added");
+      toast.success("Invitation sent");
       setNewMemberEmail("");
       setNewMemberName("");
       await fetchTeam();
@@ -94,6 +95,34 @@ const TeamSection = () => {
       toast.error(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleDeleteMember = async (memberId: string) => {
+    if (!memberId || deletingMemberId) return;
+    setDeletingMemberId(memberId);
+
+    try {
+      const res = await fetch("/api/team/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: memberId }),
+      });
+
+      const result = (await res.json().catch(() => ({}))) as { message?: string };
+
+      if (!res.ok) {
+        throw new Error(result.message || "Failed to delete member");
+      }
+
+      setTeam((prev) => prev.filter((member) => member.id !== memberId));
+      toast.success("Member removed");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not delete team member"
+      );
+    } finally {
+      setDeletingMemberId(null);
     }
   };
 
@@ -210,6 +239,20 @@ const TeamSection = () => {
                     <span className="rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       {member.status}
                     </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 rounded-lg px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={deletingMemberId === member.id}
+                      onClick={() => void handleDeleteMember(member.id)}
+                    >
+                      {deletingMemberId === member.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
                   </div>
                 </li>
               ))}

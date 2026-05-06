@@ -1,8 +1,31 @@
 import { db } from "@/db/client";
 import { teamMembers } from "@/db/schema";
 import { getSession } from "@/lib/getSession";
+import { scalekit } from "@/lib/scalekit";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
+function isScalekitAlreadyExistsError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+
+  const maybeError = error as {
+    _errorCode?: string;
+    _httpStatus?: number;
+    _message?: string;
+    message?: string;
+  };
+
+  const code = maybeError._errorCode ?? "";
+  const status = maybeError._httpStatus ?? 0;
+  const message = (maybeError._message ?? maybeError.message ?? "").toLowerCase();
+
+  return (
+    code === "RESOURCE_ALREADY_EXISTS" ||
+    status === 409 ||
+    message.includes("already_exists") ||
+    message.includes("already exists")
+  );
+}
 
 export async function POST(req: Request) {
   try {
@@ -49,6 +72,7 @@ export async function POST(req: Request) {
 
     const displayName = name || email.split("@")[0] || "Member";
 
+    // Step 1: DB mein insert karo (pending status)
     const [member] = await db
       .insert(teamMembers)
       .values({
@@ -60,8 +84,42 @@ export async function POST(req: Request) {
       })
       .returning();
 
+    //  Step 2: Scalekit se invitation email bhejo
+    try {
+      await scalekit.user.createUserAndMembership(organizationId, {
+        email,
+        userProfile: {
+          firstName: displayName,
+        },
+      });
+    } catch (inviteError) {
+      if (isScalekitAlreadyExistsError(inviteError)) {
+        // User already exists in ScaleKit, so keep DB row and mark as active to avoid blocking flow.
+        await db
+          .update(teamMembers)
+          .set({ status: "active" })
+          .where(eq(teamMembers.id, member.id));
+
+        return NextResponse.json({
+          message: "Member already exists and has been added to the team",
+          member: {
+            ...member,
+            status: "active",
+          },
+        });
+      }
+
+      // Non-recoverable invite failure: rollback DB row.
+      await db.delete(teamMembers).where(eq(teamMembers.id, member.id));
+      console.error("SCALEKIT_INVITE_ERROR", inviteError);
+      return NextResponse.json(
+        { message: "Failed to send invitation email" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
-      message: "Member added",
+      message: "Invitation sent",
       member,
     });
   } catch (error) {
