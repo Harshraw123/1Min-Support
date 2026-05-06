@@ -31,7 +31,7 @@ type Organization = {
   id: string | null;
   name: string | null;
   website_url: string | null;
-  external_links: string | null;
+  external_links: unknown;
 };
 
 const SettingPage = () => {

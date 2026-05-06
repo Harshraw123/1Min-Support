@@ -12,6 +12,21 @@ const groq = new Groq({
 
 const MODEL = "llama-3.3-70b-versatile";// llama 3 8b — "3b versatile" is llama-3.2-3b-preview or groq's alias
 
+function formatContextValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .join(", ");
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getSession();
@@ -55,7 +70,6 @@ export async function POST(req: NextRequest) {
         .where(
           and(
             eq(sectionsTable.id, sectionId),
-            eq(sectionsTable.user_email, userEmail),
             eq(sectionsTable.chatbot_id, workspaceId),
             eq(sectionsTable.workspace_id, workspaceId)
           )
@@ -84,8 +98,10 @@ export async function POST(req: NextRequest) {
         if (section.name) sectionLines.push(`Section: ${section.name}`);
         if (section.description) sectionLines.push(`Purpose: ${section.description}`);
         if (section.tone) sectionLines.push(`Tone: ${section.tone}`);
-        if (section.allowed_topics) sectionLines.push(`Allowed topics: ${section.allowed_topics}`);
-        if (section.blocked_topics) sectionLines.push(`Blocked topics: ${section.blocked_topics}`);
+        const allowedTopics = formatContextValue(section.allowed_topics);
+        const blockedTopics = formatContextValue(section.blocked_topics);
+        if (allowedTopics) sectionLines.push(`Allowed topics: ${allowedTopics}`);
+        if (blockedTopics) sectionLines.push(`Blocked topics: ${blockedTopics}`);
         if (section.fallback_behavior) sectionLines.push(`Fallback behavior: ${section.fallback_behavior}`);
         sectionContext = sectionLines.join("\n");
       }
@@ -100,7 +116,6 @@ export async function POST(req: NextRequest) {
         .where(
           and(
             eq(knowledgeTable.workspace_id, workspaceId),
-            eq(knowledgeTable.user_email, userEmail),
             inArray(knowledgeTable.id, effectiveSourceIds)
           )
         );

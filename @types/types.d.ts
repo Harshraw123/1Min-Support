@@ -13,13 +13,13 @@ export interface Section {
 
 interface KnowledgeSource {
   id: string;
-  user_email: string;
+  workspace_id: string;
   title: string;
   content: string;
   type: string;
   status: string;
   source_url: string | null;
-  meta_data: string | null;
+  meta_data: Record<string, unknown> | string | null;
   created_at: string | null;
 }
 export type KnowledgeType = "website" | "text" | "upload";

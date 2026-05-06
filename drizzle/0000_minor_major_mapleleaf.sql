@@ -32,7 +32,6 @@ CREATE TABLE "chatbots" (
 --> statement-breakpoint
 CREATE TABLE "knowledge" (
 	"id" text PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_email" text NOT NULL,
 	"workspace_id" text NOT NULL,
 	"title" text NOT NULL,
 	"content" text NOT NULL,
@@ -54,7 +53,6 @@ CREATE TABLE "metadata" (
 --> statement-breakpoint
 CREATE TABLE "sections" (
 	"id" text PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_email" text NOT NULL,
 	"chatbot_id" text NOT NULL,
 	"workspace_id" text NOT NULL,
 	"name" text NOT NULL,

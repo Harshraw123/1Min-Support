@@ -4,7 +4,7 @@ import { getSession } from "@/lib/getSession";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const user = await getSession();
     const workspaceId =

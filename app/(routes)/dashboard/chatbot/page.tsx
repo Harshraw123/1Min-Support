@@ -21,7 +21,7 @@ type SectionRecord = {
   id: string;
   name: string;
   description: string | null;
-  source_ids: string | null;
+  source_ids?: string | null;
   tone: string | null;
   allowed_topics: string | null;
   blocked_topics: string | null;

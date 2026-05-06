@@ -33,7 +33,6 @@ export async function DELETE(req: NextRequest) {
       .where(
         and(
           eq(sections.id, id),
-          eq(sections.user_email, userEmail),
           eq(sections.chatbot_id, workspaceId),
           eq(sections.workspace_id, workspaceId)
         )

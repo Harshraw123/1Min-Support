@@ -70,7 +70,7 @@ async function requireSessionContext() {
     };
   }
 
-  return { ok: true as const, userEmail, workspaceId };
+  return { ok: true as const, workspaceId };
 }
 
 export async function POST(req: NextRequest) {
@@ -97,7 +97,6 @@ export async function POST(req: NextRequest) {
     const [created] = await db
       .insert(sections)
       .values({
-        user_email: ctx.userEmail,
         chatbot_id: ctx.workspaceId,
         workspace_id: ctx.workspaceId,
         name,
@@ -166,7 +165,6 @@ export async function PUT(req: NextRequest) {
       .where(
         and(
           eq(sections.id, id),
-          eq(sections.user_email, ctx.userEmail),
           eq(sections.chatbot_id, ctx.workspaceId),
           eq(sections.workspace_id, ctx.workspaceId)
         )
@@ -198,7 +196,6 @@ export async function DELETE(req: NextRequest) {
       .where(
         and(
           eq(sections.id, id),
-          eq(sections.user_email, ctx.userEmail),
           eq(sections.chatbot_id, ctx.workspaceId),
           eq(sections.workspace_id, ctx.workspaceId)
         )

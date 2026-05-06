@@ -16,11 +16,7 @@ const MODEL_NAME = "llama-3.3-70b-versatile";
 const MAX_INPUT_CHARS = 5000;
 
 function buildMetaData(meta: Record<string, unknown>) {
-  try {
-    return JSON.stringify(meta);
-  } catch {
-    return JSON.stringify({ note: "meta_data serialization failed" });
-  }
+  return meta;
 }
 
 export async function POST(req: NextRequest) {
@@ -107,7 +103,6 @@ ${safeText}`;
           content: formattedContent,
           type: "upload",
           status: "active",
-          user_email: userEmail,
           workspace_id: workspaceId,
           meta_data: buildMetaData({
             flow: "upload",
@@ -210,7 +205,6 @@ ${safeMarkdown}`;
           type: "website",
           status: "active",
           source_url: finalUrl,
-          user_email: userEmail,
           workspace_id: workspaceId,
           meta_data: buildMetaData({
             flow: "website",
@@ -250,7 +244,6 @@ ${safeMarkdown}`;
           content: formattedContent,
           type: "text",
           status: "active",
-          user_email: userEmail,
           workspace_id: workspaceId,
           meta_data: buildMetaData({
             flow: "text",

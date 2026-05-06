@@ -50,7 +50,6 @@ export const knowledge = pgTable("knowledge", {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
 
-  user_email: text("user_email").notNull(),
   workspace_id: text("workspace_id").notNull(),
 
   title: text("title").notNull(),
@@ -77,7 +76,6 @@ export const sections = pgTable("sections", {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
 
-  user_email: text("user_email").notNull(),
   chatbot_id: text("chatbot_id").notNull(), // 🔥 MUST
 
   workspace_id: text("workspace_id").notNull(),

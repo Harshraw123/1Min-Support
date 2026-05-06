@@ -1,5 +1,5 @@
 {
-  "id": "759b1c07-df95-41d8-83e9-0cbc4a98e227",
+  "id": "4db055e4-8e7f-4892-8c6e-23ce7b36c4fa",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -206,12 +206,6 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "user_email": {
-          "name": "user_email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "workspace_id": {
           "name": "workspace_id",
           "type": "text",
@@ -332,12 +326,6 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
-        },
-        "user_email": {
-          "name": "user_email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
         },
         "chatbot_id": {
           "name": "chatbot_id",

@@ -32,14 +32,13 @@ import SectionTable from "@/app/components/SectionTable";
 
 interface KnowledgeSource {
   id: string;
-  user_email: string;
   workspace_id: string;
   title: string;
   content: string;
   type: string;
   status: string;
   source_url: string | null;
-  meta_data: string | null;
+  meta_data: Record<string, unknown> | string | null;
   created_at: string | null;
 }
 
@@ -47,7 +46,7 @@ interface Section {
   id: string;
   name: string;
   description: string;
-  source_ids: string | null;
+  source_ids?: string | null;
   tone: string;
   scope_label: string;
   allowed_topics: string | null;
@@ -197,7 +196,7 @@ const Page = () => {
       blockedTopics: section.blocked_topics ?? "",
       fallbackBehavior: section.fallback_behavior ?? "escalate",
     });
-    setSelectedSources(parseSourceIds(section.source_ids));
+    setSelectedSources(parseSourceIds(section.source_ids ?? null));
     setIsSheetOpen(true);
   };
 
