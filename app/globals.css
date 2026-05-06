@@ -168,6 +168,28 @@
   .animate-fade-in {
     animation: fade-in 0.8s ease-out forwards;
   }
+
+  @keyframes dash-march {
+    to { stroke-dashoffset: -24; }
+  }
+  .arrow-dash {
+    stroke-dasharray: 8 6;
+    animation: dash-march 1.2s linear infinite;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(to right, oklch(from var(--border) l c h / 0.35) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(from var(--border) l c h / 0.35) 1px, transparent 1px);
+    background-size: 36px 36px;
+    mask-image: radial-gradient(circle at center, black 45%, transparent 90%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .arrow-dash {
+      animation: none;
+    }
+  }
 }
 
 /* SPINNER */

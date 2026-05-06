@@ -6,7 +6,8 @@ import FaqSectionServer from "./components/FaqSectionServer";
 import CTASectionServer from "./components/CTASectionServer";
 import FooterServer from "./components/FooterServer";
 import { getSession } from "@/lib/getSession";
-import Steps from "./components/Steps";
+
+import { ProcessFlow } from "./components/ProcessFlow";
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ const Index = async () => {
       <HeroSection isAuthenticated={Boolean(user)} serverUser={user} />
       <FeaturesSectionServer />
       <TestimonialsSectionServer />
-      <Steps/>
+      <ProcessFlow/>
       <FaqSectionServer />
       <CTASectionServer />
       <FooterServer />

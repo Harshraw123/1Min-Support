@@ -17,5 +17,5 @@ export const mainItems = [
     { title: "Conversations", url: "/dashboard/conversations", icon: MessageCircle },
   
     // Settings → standard gear icon
-    { title: "Setting", url: "/dashboard/settings", icon: Settings },
+    { title: "Settings", url: "/dashboard/settings", icon: Settings },
   ];
