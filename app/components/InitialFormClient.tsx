@@ -6,6 +6,16 @@ const InitialForm = dynamic(() => import("@/app/components/InitialForm"), {
   ssr: false,
 });
 
-export default function InitialFormClient() {
-  return <InitialForm />;
+interface FormData {
+  businessName: string;
+  websiteUrl: string;
+  externalLinks: string;
+}
+
+interface InitialFormClientProps {
+  onSubmit?: (data: FormData) => void | Promise<void>;
+}
+
+export default function InitialFormClient({ onSubmit }: InitialFormClientProps) {
+  return <InitialForm onSubmit={onSubmit} />;
 }

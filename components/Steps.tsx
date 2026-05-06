@@ -10,8 +10,7 @@ type Step = {
   title: string;
   desc: string;
   highlight: string;
-  image: string;
-  span: string;
+  variant: "knowledge" | "sections" | "settings" | "team" | "webhook" | "simulator";
 };
 
 const StepCard = ({ step, index }: { step: Step; index: number }) => {
@@ -21,7 +20,7 @@ const StepCard = ({ step, index }: { step: Step; index: number }) => {
     <div
       ref={ref}
       style={{ transitionDelay: `${index * 70}ms` }}
-      className={`group relative overflow-hidden rounded-2xl ${step.span}
+      className={`group relative overflow-hidden rounded-2xl
       p-6 sm:p-7 min-h-[260px] sm:min-h-[300px]
       border border-border
       shadow-sm hover:shadow-md hover:border-foreground/20
@@ -57,20 +56,7 @@ const StepCard = ({ step, index }: { step: Step; index: number }) => {
         </div>
       </div>
 
-      {/* Illustration (optional) */}
-      {step.image ? (
-        <Image
-          src={step.image}
-          alt=""
-          width={220}
-          height={220}
-          className="pointer-events-none select-none absolute -right-2 -bottom-2
-          w-[45%] max-w-[220px] opacity-80
-          object-contain transition-transform duration-300
-          group-hover:scale-105"
-        />
-      ) : null}
-    </div>
+          </div>
   );
 };
 
