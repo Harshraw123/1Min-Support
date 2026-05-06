@@ -26,13 +26,14 @@ function buildMetaData(meta: Record<string, unknown>) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
+    const userEmail = session?.email?.trim() || session?.user?.email?.trim();
     const workspaceId =
       typeof session?.organization_id === "string" &&
       session.organization_id.trim()
         ? session.organization_id.trim()
         : null;
 
-    if (!session) {
+    if (!userEmail) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
     if (!workspaceId) {
@@ -106,6 +107,7 @@ ${safeText}`;
           content: formattedContent,
           type: "upload",
           status: "active",
+          user_email: userEmail,
           workspace_id: workspaceId,
           meta_data: buildMetaData({
             flow: "upload",
@@ -208,6 +210,7 @@ ${safeMarkdown}`;
           type: "website",
           status: "active",
           source_url: finalUrl,
+          user_email: userEmail,
           workspace_id: workspaceId,
           meta_data: buildMetaData({
             flow: "website",
@@ -247,6 +250,7 @@ ${safeMarkdown}`;
           content: formattedContent,
           type: "text",
           status: "active",
+          user_email: userEmail,
           workspace_id: workspaceId,
           meta_data: buildMetaData({
             flow: "text",

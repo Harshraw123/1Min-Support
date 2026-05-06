@@ -1,11 +1,11 @@
 {
-  "id": "25d73d0f-8ef9-4180-a667-648276dd1755",
+  "id": "759b1c07-df95-41d8-83e9-0cbc4a98e227",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.user": {
-      "name": "user",
+    "public.users": {
+      "name": "users",
       "schema": "",
       "columns": {
         "id": {
@@ -41,7 +41,7 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
@@ -51,8 +51,8 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "user_email_unique": {
-          "name": "user_email_unique",
+        "users_email_unique": {
+          "name": "users_email_unique",
           "nullsNotDistinct": false,
           "columns": [
             "email"
@@ -63,8 +63,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.chatBotMetadata": {
-      "name": "chatBotMetadata",
+    "public.chat_bot_metadata": {
+      "name": "chat_bot_metadata",
       "schema": "",
       "columns": {
         "id": {
@@ -74,11 +74,24 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "user_email": {
-          "name": "user_email",
+        "widget_id": {
+          "name": "widget_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "chatbot_id": {
+          "name": "chatbot_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "color": {
           "name": "color",
@@ -100,16 +113,22 @@
           "primaryKey": false,
           "notNull": false
         },
-        "widget_id": {
-          "name": "widget_id",
+        "allowed_domain": {
+          "name": "allowed_domain",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
@@ -119,11 +138,11 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "chatBotMetadata_user_email_unique": {
-          "name": "chatBotMetadata_user_email_unique",
+        "chat_bot_metadata_widget_id_unique": {
+          "name": "chat_bot_metadata_widget_id_unique",
           "nullsNotDistinct": false,
           "columns": [
-            "user_email"
+            "widget_id"
           ]
         }
       },
@@ -137,13 +156,14 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
+          "type": "text",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
         "name": {
           "name": "name",
-          "type": "varchar(255)",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -153,9 +173,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "user_email": {
-          "name": "user_email",
-          "type": "varchar(255)",
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -231,13 +251,13 @@
         },
         "meta_data": {
           "name": "meta_data",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
@@ -282,13 +302,13 @@
         },
         "external_links": {
           "name": "external_links",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
@@ -315,6 +335,12 @@
         },
         "user_email": {
           "name": "user_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chatbot_id": {
+          "name": "chatbot_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -353,13 +379,13 @@
         },
         "allowed_topics": {
           "name": "allowed_topics",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
         "blocked_topics": {
           "name": "blocked_topics",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
@@ -385,7 +411,14 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
@@ -410,6 +443,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "user_email": {
           "name": "user_email",
           "type": "text",
@@ -418,12 +457,6 @@
         },
         "name": {
           "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "organization_id": {
-          "name": "organization_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -444,7 +477,7 @@
         },
         "created_at": {
           "name": "created_at",
-          "type": "text",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "default": "now()"

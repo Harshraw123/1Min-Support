@@ -15,6 +15,7 @@ type StorePayload = {
   allowed_topics?: string;
   blocked_topics?: string;
   fallback_behavior?: string;
+  source_ids?: string[] | string | null;
   status?: string;
 };
 
@@ -22,6 +23,28 @@ function normalizeOptionalText(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function normalizeSourceIds(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (Array.isArray(value)) {
+    const ids = value.filter((v) => typeof v === "string" && v.trim().length > 0);
+    return ids.length ? JSON.stringify(ids) : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        const ids = parsed.filter((v) => typeof v === "string" && v.trim().length > 0);
+        return ids.length ? JSON.stringify(ids) : null;
+      }
+    } catch {
+      return JSON.stringify([trimmed]);
+    }
+  }
+  return null;
 }
 
 async function requireSessionContext() {
@@ -47,7 +70,7 @@ async function requireSessionContext() {
     };
   }
 
-  return { ok: true as const, workspaceId };
+  return { ok: true as const, userEmail, workspaceId };
 }
 
 export async function POST(req: NextRequest) {
@@ -64,6 +87,7 @@ export async function POST(req: NextRequest) {
     const fallbackBehavior = normalizeOptionalText(body.fallback_behavior) ?? "escalate";
     const allowedTopics = normalizeOptionalText(body.allowed_topics);
     const blockedTopics = normalizeOptionalText(body.blocked_topics);
+    const sourceIds = normalizeSourceIds(body.source_ids);
     const status = normalizeOptionalText(body.status) ?? "active";
 
     if (!name || !description) {
@@ -73,6 +97,7 @@ export async function POST(req: NextRequest) {
     const [created] = await db
       .insert(sections)
       .values({
+        user_email: ctx.userEmail,
         chatbot_id: ctx.workspaceId,
         workspace_id: ctx.workspaceId,
         name,
@@ -82,6 +107,7 @@ export async function POST(req: NextRequest) {
         allowed_topics: allowedTopics,
         blocked_topics: blockedTopics,
         fallback_behavior: fallbackBehavior,
+        source_ids: sourceIds,
         status,
       })
       .returning();
@@ -125,6 +151,8 @@ export async function PUT(req: NextRequest) {
     const fallbackBehavior = normalizeOptionalText(body.fallback_behavior);
     if (fallbackBehavior !== null) patch.fallback_behavior = fallbackBehavior;
 
+    if (body.source_ids !== undefined) patch.source_ids = normalizeSourceIds(body.source_ids);
+
     const status = normalizeOptionalText(body.status);
     if (status !== null) patch.status = status;
 
@@ -138,6 +166,7 @@ export async function PUT(req: NextRequest) {
       .where(
         and(
           eq(sections.id, id),
+          eq(sections.user_email, ctx.userEmail),
           eq(sections.chatbot_id, ctx.workspaceId),
           eq(sections.workspace_id, ctx.workspaceId)
         )
@@ -169,6 +198,7 @@ export async function DELETE(req: NextRequest) {
       .where(
         and(
           eq(sections.id, id),
+          eq(sections.user_email, ctx.userEmail),
           eq(sections.chatbot_id, ctx.workspaceId),
           eq(sections.workspace_id, ctx.workspaceId)
         )
@@ -183,4 +213,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
-

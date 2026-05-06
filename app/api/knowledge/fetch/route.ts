@@ -8,12 +8,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const user = await getSession();
+    const session = await getSession();
+    const userEmail = session?.email?.trim() || session?.user?.email?.trim();
     const workspaceId =
-      typeof user?.organization_id === "string" && user.organization_id.trim()
-        ? user.organization_id.trim()
+      typeof session?.organization_id === "string" && session.organization_id.trim()
+        ? session.organization_id.trim()
         : null;
-    if (!user || !workspaceId) {
+    if (!userEmail) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
     if (!workspaceId) {
@@ -26,7 +27,6 @@ export async function GET() {
     const rows = await db
       .select()
       .from(knowledgeTable)
-      .where(eq(knowledgeTable.workspace_id, workspaceId));
       .where(
         and(
           eq(knowledgeTable.user_email, userEmail),

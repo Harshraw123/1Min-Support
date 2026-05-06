@@ -30,11 +30,12 @@ export async function GET() {
       .from(sectionsTable)
       .where(
         and(
-
+          eq(sectionsTable.user_email, userEmail),
           eq(sectionsTable.chatbot_id, workspaceId),
           eq(sectionsTable.workspace_id, workspaceId)
         )
-      );
+      )
+      .orderBy(desc(sectionsTable.created_at));
 
     return NextResponse.json(rows, { status: 200 });
   } catch (error) {
