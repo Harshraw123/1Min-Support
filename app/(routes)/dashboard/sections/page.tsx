@@ -32,9 +32,14 @@ import SectionTable from "@/app/components/SectionTable";
 
 interface KnowledgeSource {
   id: string;
+  user_email: string;
+  workspace_id: string;
   title: string;
-  source_url: string | null;
+  content: string;
+  type: string;
   status: string;
+  source_url: string | null;
+  meta_data: string | null;
   created_at: string | null;
 }
 

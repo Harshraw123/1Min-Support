@@ -222,6 +222,9 @@ const ChatbotPage = () => {
     setActiveSection(id);
     const sectionName = sections.find((section) => section.id === id)?.name ?? id;
     toast.info(`Switched to ${sectionName} context`);
+    // Reset chat messages when switching context to avoid confusion
+    setMessages([]);
+    setIsTyping(false);
   };
 
   const handleReset = () => {

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { KnowledgeSource, SectionFormFieldsSharedProps } from "./types";
 
 const getSourceLabel = (source: KnowledgeSource) =>
-  source.title || source.source_url || source.url || "Untitled";
+  source.title || source.source_url || "Untitled";
 
 function DataSourcesSection({
   knowledgeSources,

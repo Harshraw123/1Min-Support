@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { sections as sectionsTable } from "@/db/schema";
 import { getSession } from "@/lib/getSession";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -28,6 +30,7 @@ export async function GET() {
       .from(sectionsTable)
       .where(
         and(
+
           eq(sectionsTable.chatbot_id, workspaceId),
           eq(sectionsTable.workspace_id, workspaceId)
         )
@@ -39,4 +42,3 @@ export async function GET() {
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
-

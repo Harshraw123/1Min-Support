@@ -1,14 +1,24 @@
 type SourceType = "website" | "docs" | "upload" | "text";
 type SourceStatus = "active" | "training" | "error" | "excluded";
 
+export interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface Section {
+  id: string;
+  name: string;
+}
+
 interface KnowledgeSource {
   id: string;
   user_email: string;
+  title: string;
+  content: string;
   type: string;
-  name: string;
   status: string;
   source_url: string | null;
-  content: string | null;
   meta_data: string | null;
   created_at: string | null;
 }

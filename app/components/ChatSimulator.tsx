@@ -5,18 +5,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { RefreshCw, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import { ChatSimulatorProps } from "@/@types/types";
+import { ChatSimulatorProps, Message, Section } from "@/@types/types";
 import Image from "next/image";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface Section {
-  id: string;
-  name: string;
-}
 
 
 const Avatar = ({ color, src }: { color: string; src: string }) => (
