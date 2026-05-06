@@ -8,6 +8,8 @@ export const metadata = {
   description: "Instantly resolve customer questions with an assistant that reads your",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: Readonly<{

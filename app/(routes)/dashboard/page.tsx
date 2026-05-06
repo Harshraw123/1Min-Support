@@ -48,7 +48,8 @@ const Page = () => {
           onSubmit={async (data) => {
             await submitMetadata(data);
             setIsMetaDataAvailable(true);
-            router.replace("/dashboard/knowledge");
+            router.replace("/dashboard/settings");
+            router.refresh();
           }}
         />
       ) : (
