@@ -28,14 +28,15 @@ export async function GET(request: Request) {
       );
     }
 
-    if (!user?.email) {
+    const userEmail = user?.email?.trim() || user?.user?.email?.trim();
+    if (!userEmail) {
         return NextResponse.json({ error: "Email not found" }, { status: 400 });
       }
     // Cache miss - check database
     const [record] = await db
       .select()
       .from(metadata)
-      .where(eq(metadata.user_email, user.email));
+      .where(eq(metadata.user_email, userEmail));
 
     if (!record) {
       return NextResponse.json({ exists: false }, { status: 404 }); 

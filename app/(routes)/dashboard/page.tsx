@@ -3,6 +3,7 @@
 import InitialFormClient from "@/app/components/InitialFormClient";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { submitMetadata } from "@/lib/InitialFormData/api";
 
 const Page = () => { 
 
@@ -44,9 +45,10 @@ const Page = () => {
     <div>
       {!isMetaDataAvailable ? ( 
         <InitialFormClient
-          onSubmit={() => {
+          onSubmit={async (data) => {
+            await submitMetadata(data);
             setIsMetaDataAvailable(true);
-            router.refresh();
+            router.replace("/dashboard/knowledge");
           }}
         />
       ) : (

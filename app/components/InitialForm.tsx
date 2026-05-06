@@ -2,6 +2,7 @@
 
 import React, { useCallback, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Sparkles, Link2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface FormData {
   businessName: string;
@@ -78,6 +79,10 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
     setIsSubmitting(true);
     try {
       await onSubmit?.(formData);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to submit onboarding details"
+      );
     } finally {
       setIsSubmitting(false);
     }

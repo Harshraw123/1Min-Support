@@ -8,9 +8,14 @@ export type InitialFormData = {
 
 export const submitMetadata = async (formData: InitialFormData) => {
   const sessionRes = await fetch("/api/auth/session");
+  if (!sessionRes.ok) {
+    throw new Error("Failed to read session");
+  }
   const session = await sessionRes.json();
+  const email =
+    session?.user?.email?.trim?.() || session?.user?.user?.email?.trim?.();
 
-  if (!session?.user?.email) {
+  if (!email) {
     throw new Error("User not authenticated");
   }
 
@@ -20,7 +25,7 @@ export const submitMetadata = async (formData: InitialFormData) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      user_email: session.user.email,
+      user_email: email,
       business_name: formData.businessName,
       website_url: formData.websiteUrl,
       external_links: formData.externalLinks,
@@ -28,7 +33,8 @@ export const submitMetadata = async (formData: InitialFormData) => {
   });
 
   if (!res.ok) {
-    throw new Error("Failed to save metadata");
+    const payload = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+    throw new Error(payload.error || payload.message || "Failed to save metadata");
   }
 
   return res.json();
