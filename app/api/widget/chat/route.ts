@@ -1,6 +1,6 @@
 import { db } from "@/db/client";
 import { sections as sectionsTable } from "@/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 import { workspaceChatCompletion } from "@/lib/chat/workspaceChatCompletion";
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         .select({ id: sectionsTable.id })
         .from(sectionsTable)
         .where(eq(sectionsTable.chatbot_id, chatbotId))
-        .orderBy(asc(sectionsTable.created_at))
+        .orderBy(desc(sectionsTable.created_at))
         .limit(1);
       sectionId = first?.id ?? null;
     }

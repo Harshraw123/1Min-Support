@@ -5,18 +5,30 @@ interface ChatContainerProps {
   token: string;
   initialMessage?: string;
   color?: string;
+  sections?: ChatSection[];
+  activeSectionId?: string | null;
+  onSectionChange?: (id: string) => void;
 }
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
+type ChatSection = { id: string; name: string };
 
 function normalizeColor(value?: string) {
   const color = value?.trim();
   return color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#2563eb";
 }
 
-const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => {
+const ChatContainer = ({
+  token,
+  initialMessage,
+  color,
+  sections = [],
+  activeSectionId,
+  onSectionChange,
+}: ChatContainerProps) => {
   const accentColor = normalizeColor(color);
   const resolvedInitialMessage = initialMessage || "Hi there! How can I help you today?";
+  const hasSections = sections.length > 0;
   const widgetThemeStyle = {
     "--widget-primary": accentColor,
   } as React.CSSProperties;
@@ -28,15 +40,13 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
   const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
-    setMessages((prev) => {
-      if (prev.length !== 1 || prev[0]?.role !== "assistant") return prev;
-      if (prev[0].content === resolvedInitialMessage) return prev;
-      return [{ role: "assistant", content: resolvedInitialMessage }];
-    });
-  }, [resolvedInitialMessage]);
+    setMessages([{ role: "assistant", content: resolvedInitialMessage }]);
+    setInput("");
+    setIsTyping(false);
+  }, [activeSectionId, resolvedInitialMessage]);
 
   const handleSend = async () => {
-    if (!token.trim() || !input.trim() || isTyping) return;
+    if (!token.trim() || !input.trim() || isTyping || (hasSections && !activeSectionId)) return;
 
     const userMessage: ChatMessage = { role: "user", content: input.trim() };
     const nextMessages = [...messages, userMessage];
@@ -53,6 +63,7 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
         },
         body: JSON.stringify({
           messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
+          section_id: activeSectionId,
         }),
       });
 
@@ -107,6 +118,32 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
         `}
       </style>
       <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+        {hasSections && (
+          <div className="flex flex-wrap gap-1.5">
+            {sections.map((section) => {
+              const active = activeSectionId === section.id;
+
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => onSectionChange?.(section.id)}
+                  aria-pressed={active}
+                  className="rounded-full border px-3 py-1 text-[11px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{
+                    borderColor: active ? accentColor : undefined,
+                    backgroundColor: active ? `${accentColor}1A` : undefined,
+                    color: active ? accentColor : undefined,
+                  }}
+                  disabled={isTyping}
+                >
+                  {section.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {messages.map((message, index) => (
           <div
             key={index}
@@ -157,12 +194,12 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
             }}
             placeholder="Type your message..."
             className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none"
-            disabled={isTyping}
+            disabled={isTyping || (hasSections && !activeSectionId)}
           />
           <button
             type="button"
             onClick={() => void handleSend()}
-            disabled={isTyping || !token.trim() || !input.trim()}
+            disabled={isTyping || !token.trim() || !input.trim() || (hasSections && !activeSectionId)}
             className="px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             style={{ backgroundColor: accentColor }}
           >

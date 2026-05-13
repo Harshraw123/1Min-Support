@@ -1,6 +1,6 @@
 import { db } from "@/db/client";
 import { chatBotMetadata } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { sections } from "@/db/schema";
 
@@ -48,7 +48,8 @@ export async function GET(req: NextRequest) {
     const userSections = await db
       .select()
       .from(sections)
-      .where(eq(sections.chatbot_id, meta.chatbot_id));
+      .where(eq(sections.chatbot_id, meta.chatbot_id))
+      .orderBy(desc(sections.created_at));
 
     const response = NextResponse.json({
       config: {

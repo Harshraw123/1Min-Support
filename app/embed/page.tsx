@@ -24,6 +24,7 @@ interface WidgetConfigPayload {
   avatarSrc?: unknown;
 }
 
+type WidgetSection = { id: string; name: string };
 type UiTheme = "light" | "dark" | "system";
 
 // ---------------------------------------------------------------------------
@@ -81,6 +82,20 @@ function normalizeConfig(payload?: WidgetConfigPayload | null): WidgetConfig {
   };
 }
 
+function normalizeSections(value: unknown): WidgetSection[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter(
+      (section): section is { id: string; name: string } =>
+        typeof section?.id === "string" &&
+        section.id.trim().length > 0 &&
+        typeof section?.name === "string" &&
+        section.name.trim().length > 0
+    )
+    .map((section) => ({ id: section.id.trim(), name: section.name.trim() }));
+}
+
 // ---------------------------------------------------------------------------
 // Main content (needs Suspense because it calls useSearchParams)
 // ---------------------------------------------------------------------------
@@ -93,6 +108,8 @@ const EmbedContent = () => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<WidgetConfig>(DEFAULT_CONFIG);
+  const [sections, setSections] = useState<WidgetSection[]>([]);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [chatToken, setChatToken] = useState(sessionToken ?? widgetId ?? "");
   const [loading, setLoading] = useState(!widgetId && !sessionToken);
   const [error, setError] = useState(false);
@@ -160,9 +177,16 @@ const EmbedContent = () => {
 
         const data = await response.json();
         const nextConfig = normalizeConfig(data?.config ?? data);
+        const nextSections = normalizeSections(data?.sections);
 
         if (!cancelled) {
           setConfig(nextConfig);
+          setSections(nextSections);
+          setActiveSectionId((current) => {
+            if (nextSections.length === 0) return null;
+            if (current && nextSections.some((section) => section.id === current)) return current;
+            return nextSections[0].id;
+          });
           setError(false);
         }
       } catch (err) {
@@ -257,7 +281,14 @@ const EmbedContent = () => {
           </div>
 
           <div className="flex-1 min-h-0 overflow-hidden bg-background">
-            <ChatContainer token={chatToken} initialMessage={config.welcomeMessage} color={primaryColor} />
+            <ChatContainer
+              token={chatToken}
+              initialMessage={config.welcomeMessage}
+              color={primaryColor}
+              sections={sections}
+              activeSectionId={activeSectionId}
+              onSectionChange={setActiveSectionId}
+            />
           </div>
         </div>
       ) : (
