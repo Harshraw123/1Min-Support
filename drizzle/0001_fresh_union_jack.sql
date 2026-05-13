@@ -1,0 +1,1 @@
+ALTER TABLE "chat_bot_metadata" ADD COLUMN "default_section_id" text;

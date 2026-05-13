@@ -74,6 +74,7 @@ export async function POST(req: Request) {
         welcomeMessage: bot.welcome_message,
         primaryColor: bot.color || "#000000",
         botImage: bot.avatar_src,
+        defaultSectionId: bot.default_section_id,
         helpText: "Powered by OneMinute Support",
       },
     });

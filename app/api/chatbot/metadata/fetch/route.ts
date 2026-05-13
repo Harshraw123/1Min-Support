@@ -37,6 +37,7 @@ export async function GET() {
         primaryColor: record.color ?? "#111827",
         welcomeMessage: record.welcome_message ?? "Hi there, How can I help you today?",
         avatarSrc: record.avatar_src ?? null,
+        defaultSectionId: record.default_section_id ?? null,
         widgetId: record.widget_id ?? null,
       },
     });

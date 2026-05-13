@@ -34,6 +34,7 @@ const ChatbotPage = () => {
   const [welcomeMessage, setWelcomeMessage] = useState("Hi there, How can I help you today?");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingMeta, setIsLoadingMeta] = useState(true);
+  const [defaultSectionId, setDefaultSectionId] = useState<string | null>(null);
 
   const [widgetId, setWidgetId] = useState("");
 
@@ -87,6 +88,11 @@ const ChatbotPage = () => {
         setPrimaryColor(safeColor);
         setWelcomeMessage(safeWelcome);
         setAvatarSrc(safeAvatar);
+        setDefaultSectionId(
+          typeof data?.defaultSectionId === "string" && data.defaultSectionId.trim()
+            ? data.defaultSectionId.trim()
+            : null
+        );
         if (typeof data?.widgetId === "string" && data.widgetId.trim()) {
           setWidgetId(data.widgetId);
         }
@@ -129,12 +135,6 @@ const ChatbotPage = () => {
 
         setSectionRecords(normalized);
         setSections(normalized.map((row) => ({ id: row.id, name: row.name })));
-
-        setActiveSection((prev) => {
-          if (normalized.length === 0) return null;
-          if (prev && normalized.some((row) => row.id === prev)) return prev;
-          return normalized[0].id;
-        });
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           console.error("Error loading sections:", error);
@@ -147,6 +147,17 @@ const ChatbotPage = () => {
 
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    setActiveSection((prev) => {
+      if (sections.length === 0) return null;
+      if (prev && sections.some((section) => section.id === prev)) return prev;
+      if (defaultSectionId && sections.some((section) => section.id === defaultSectionId)) {
+        return defaultSectionId;
+      }
+      return sections[0].id;
+    });
+  }, [defaultSectionId, sections]);
 
   const handleSend = async () => {
     if (!activeSection || isTyping) return;
@@ -246,6 +257,7 @@ const ChatbotPage = () => {
           primaryColor: primaryColor.trim() || "#111827",
           welcomeMessage: welcomeMessage.trim() || "Hi there, How can I help you today?",
           avatarSrc,
+          defaultSectionId: activeSection,
         }),
       });
 
@@ -259,6 +271,11 @@ const ChatbotPage = () => {
       if (data?.primaryColor) setPrimaryColor(data.primaryColor);
       if (data?.welcomeMessage) setWelcomeMessage(data.welcomeMessage);
       if (data?.avatarSrc) setAvatarSrc(data.avatarSrc);
+      setDefaultSectionId(
+        typeof data?.defaultSectionId === "string" && data.defaultSectionId.trim()
+          ? data.defaultSectionId.trim()
+          : null
+      );
       if (data?.widgetId) setWidgetId(data.widgetId);
       toast.success("Settings saved successfully!");
     } catch (error) {

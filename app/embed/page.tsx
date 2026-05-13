@@ -12,6 +12,7 @@ interface WidgetConfig {
   businessName?: string;
   welcomeMessage: string;
   avatarSrc?: string;
+  defaultSectionId?: string;
 }
 
 interface WidgetConfigPayload {
@@ -22,6 +23,7 @@ interface WidgetConfigPayload {
   name?: unknown;
   botImage?: unknown;
   avatarSrc?: unknown;
+  defaultSectionId?: unknown;
 }
 
 type WidgetSection = { id: string; name: string };
@@ -79,6 +81,7 @@ function normalizeConfig(payload?: WidgetConfigPayload | null): WidgetConfig {
       readString(payload?.welcomeMessage) ??
       DEFAULT_CONFIG.welcomeMessage,
     avatarSrc: readString(payload?.botImage) ?? readString(payload?.avatarSrc),
+    defaultSectionId: readString(payload?.defaultSectionId),
   };
 }
 
@@ -185,6 +188,12 @@ const EmbedContent = () => {
           setActiveSectionId((current) => {
             if (nextSections.length === 0) return null;
             if (current && nextSections.some((section) => section.id === current)) return current;
+            if (
+              nextConfig.defaultSectionId &&
+              nextSections.some((section) => section.id === nextConfig.defaultSectionId)
+            ) {
+              return nextConfig.defaultSectionId;
+            }
             return nextSections[0].id;
           });
           setError(false);

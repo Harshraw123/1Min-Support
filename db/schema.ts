@@ -145,6 +145,8 @@ export const chat_bot_metadata = pgTable("chat_bot_metadata", {
 
   avatar_src: text("avatar_src"),
 
+  default_section_id: text("default_section_id"),
+
   allowed_domain: text("allowed_domain"),
 
   created_at: timestamp("created_at").defaultNow(),

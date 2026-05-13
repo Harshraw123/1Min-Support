@@ -8,17 +8,6 @@ import { cn } from "@/lib/utils";
 import { ChatSimulatorProps } from "@/@types/types";
 import Image from "next/image";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface Section {
-  id: string;
-  name: string;
-}
-
-
 const Avatar = ({ color, src }: { color: string; src: string }) => (
   <div
     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full shadow-sm transition-colors duration-300"
@@ -91,21 +80,34 @@ const ChatSimulator = ({
           {/* Context switcher always visible for dynamic section switching */}
           {sections.length > 0 && (
             <div className="ml-11 flex flex-wrap items-center gap-1.5">
-              {sections.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => handleSectionClick(s.id)}
-                  aria-pressed={activeSection === s.id}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-[11px] font-medium transition-all",
-                    activeSection === s.id
-                      ? "border-primary/50 bg-primary/10 text-foreground"
-                      : "border-border/60 bg-white/60 text-muted-foreground hover:border-primary/30 hover:bg-white hover:text-foreground"
-                  )}
-                >
-                  {s.name}
-                </button>
-              ))}
+              {sections.map((s) => {
+                const active = activeSection === s.id;
+
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => handleSectionClick(s.id)}
+                    aria-pressed={active}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-[11px] font-medium transition-all",
+                      active
+                        ? "bg-white/80"
+                        : "border-border/60 bg-white/60 text-muted-foreground hover:bg-white hover:text-foreground"
+                    )}
+                    style={
+                      active
+                        ? {
+                            borderColor: primaryColor,
+                            color: primaryColor,
+                            backgroundColor: `${primaryColor}1A`,
+                          }
+                        : undefined
+                    }
+                  >
+                    {s.name}
+                  </button>
+                );
+              })}
             </div>
           )}
 

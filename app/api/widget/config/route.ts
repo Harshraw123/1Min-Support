@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
         primaryColor: meta.color,
         businessName: meta.name,
         botImage: meta.avatar_src,
+        defaultSectionId: meta.default_section_id,
       },
       sections: userSections,
     });

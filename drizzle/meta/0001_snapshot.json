@@ -1,6 +1,6 @@
 {
-  "id": "4db055e4-8e7f-4892-8c6e-23ce7b36c4fa",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "d2f186e0-86f8-44e0-9387-1824aa5a51fe",
+  "prevId": "4db055e4-8e7f-4892-8c6e-23ce7b36c4fa",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -109,6 +109,12 @@
         },
         "avatar_src": {
           "name": "avatar_src",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "default_section_id": {
+          "name": "default_section_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
