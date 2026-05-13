@@ -4,11 +4,31 @@ import { NextResponse } from "next/server";
 import { SignJWT } from "jose";
 import crypto from "crypto";
 import { db } from "@/db/client";
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+function withCors(response: NextResponse, origin?: string | null) {
+  response.headers.set("Access-Control-Allow-Origin", origin || "*");
+  response.headers.set("Vary", "Origin");
+  return response;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const { widgetId } = await req.json();
     if (!widgetId || typeof widgetId !== "string") {
-      return NextResponse.json({ error: "Invalid widgetId" }, { status: 400 });
+      return withCors(NextResponse.json({ error: "Invalid widgetId" }, { status: 400 }));
     }
 
     const [bot] = await db
@@ -18,15 +38,22 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (!bot) {
-      return NextResponse.json({ error: "Chatbot not found" }, { status: 404 });
+      return withCors(NextResponse.json({ error: "Chatbot not found" }, { status: 404 }));
     }
 
     const origin = req.headers.get("origin");
-    if (bot.allowed_domain && origin !== bot.allowed_domain) {
-      return new NextResponse("Unauthorized domain", { status: 403 });
+    if (bot.allowed_domain && origin && origin !== bot.allowed_domain) {
+      return withCors(new NextResponse("Unauthorized domain", { status: 403 }), bot.allowed_domain);
     }
 
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+    if (!process.env.JWT_SECRET) {
+      return withCors(
+        NextResponse.json({ error: "Widget session signing is not configured" }, { status: 500 }),
+        bot.allowed_domain || origin
+      );
+    }
+
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     const sessionId = crypto.randomUUID();
 
     const token = await new SignJWT({
@@ -51,10 +78,9 @@ export async function POST(req: Request) {
       },
     });
 
-    response.headers.set("Access-Control-Allow-Origin", bot.allowed_domain || "*");
-    return response;
+    return withCors(response, bot.allowed_domain || origin);
   } catch (error) {
     console.error("SESSION_ERROR", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return withCors(new NextResponse("Internal Server Error", { status: 500 }));
   }
 }

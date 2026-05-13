@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 interface ChatContainerProps {
   token: string;
@@ -15,7 +15,7 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
   const [isTyping, setIsTyping] = useState(false);
 
   const handleSend = () => {
-    if (!input.trim()) return;
+    if (!token.trim() || !input.trim()) return;
     
     const userMessage = { role: "user", content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -59,9 +59,9 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
           <div className="flex justify-start">
             <div className="bg-muted text-foreground rounded-lg px-4 py-2">
               <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" />
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0.1s" }} />
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0.2s" }} />
               </div>
             </div>
           </div>
@@ -82,7 +82,7 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
           />
           <button
             onClick={handleSend}
-            disabled={isTyping || !input.trim()}
+            disabled={isTyping || !token.trim() || !input.trim()}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             style={{ backgroundColor: color }}
           >

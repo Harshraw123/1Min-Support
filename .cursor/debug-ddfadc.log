@@ -1,0 +1,17 @@
+{"sessionId":"ddfadc","location":"embed/page.tsx:params","message":"embed search params snapshot","hypothesisId":"H1-H3","data":{"hasWidgetId":false,"hasSessionToken":false,"widgetIdLen":0,"sessionTokenLen":0},"timestamp":1778676921560}
+{"sessionId":"ddfadc","timestamp":1778676925379,"location":"session/route.ts:POST","message":"widget session outcome","hypothesisId":"H4","data":{"outcome":"ok","tokenLen":296}}
+{"sessionId":"ddfadc","location":"public/widget.js:session","message":"widget session client","hypothesisId":"H4","data":{"outcome":"ok","tokenLen":296},"timestamp":1778676925381}
+{"sessionId":"ddfadc","location":"embed/page.tsx:params","message":"embed search params snapshot","hypothesisId":"H1-H3","data":{"hasWidgetId":true,"hasSessionToken":true,"widgetIdLen":36,"sessionTokenLen":296},"timestamp":1778676925472}
+{"sessionId":"ddfadc","location":"embed/page.tsx:config_fetch","message":"widget config response","hypothesisId":"H2","data":{"httpStatus":200,"ok":true,"hasSessionToken":true},"timestamp":1778676927493}
+{"sessionId":"ddfadc","timestamp":1778677103204,"location":"session/route.ts:POST","message":"widget session outcome","hypothesisId":"H4","data":{"outcome":"ok","tokenLen":296}}
+{"sessionId":"ddfadc","location":"public/widget.js:session","message":"widget session client","hypothesisId":"H4","data":{"outcome":"ok","tokenLen":296},"timestamp":1778677103209}
+{"sessionId":"ddfadc","location":"embed/page.tsx:params","message":"embed search params snapshot","hypothesisId":"H1-H3","data":{"hasWidgetId":true,"hasSessionToken":true,"widgetIdLen":36,"sessionTokenLen":296},"timestamp":1778677103315}
+{"sessionId":"ddfadc","location":"embed/page.tsx:config_fetch","message":"widget config response","hypothesisId":"H2","data":{"httpStatus":200,"ok":true,"hasSessionToken":true},"timestamp":1778677103859}
+{"sessionId":"ddfadc","timestamp":1778677231830,"location":"session/route.ts:POST","message":"widget session outcome","hypothesisId":"H4","data":{"outcome":"ok","tokenLen":296}}
+{"sessionId":"ddfadc","location":"public/widget.js:session","message":"widget session client","hypothesisId":"H4","data":{"outcome":"ok","tokenLen":296},"timestamp":1778677231834}
+{"sessionId":"ddfadc","location":"embed/page.tsx:params","message":"embed search params snapshot","hypothesisId":"H1-H3","data":{"hasWidgetId":true,"hasSessionToken":true,"widgetIdLen":36,"sessionTokenLen":296},"timestamp":1778677231920}
+{"sessionId":"ddfadc","location":"embed/page.tsx:config_fetch","message":"widget config response","hypothesisId":"H2","data":{"httpStatus":200,"ok":true,"hasSessionToken":true},"timestamp":1778677233294}
+{"sessionId":"ddfadc","timestamp":1778677555337,"location":"session/route.ts:POST","message":"widget session outcome","hypothesisId":"H4","data":{"outcome":"ok","tokenLen":296}}
+{"sessionId":"ddfadc","location":"public/widget.js:session","message":"widget session client","hypothesisId":"H4","data":{"outcome":"ok","tokenLen":296},"timestamp":1778677555342}
+{"sessionId":"ddfadc","location":"embed/page.tsx:params","message":"embed search params snapshot","hypothesisId":"H1-H3","data":{"hasWidgetId":true,"hasSessionToken":true,"widgetIdLen":36,"sessionTokenLen":296},"timestamp":1778677555662}
+{"sessionId":"ddfadc","location":"embed/page.tsx:config_fetch","message":"widget config response","hypothesisId":"H2","data":{"httpStatus":200,"ok":true,"hasSessionToken":true},"timestamp":1778677556249}

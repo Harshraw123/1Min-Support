@@ -4,10 +4,29 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { sections } from "@/db/schema";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+function withCors(response: NextResponse, origin?: string | null) {
+  response.headers.set("Access-Control-Allow-Origin", origin || "*");
+  response.headers.set("Vary", "Origin");
+  return response;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
+}
+
 export async function GET(req: NextRequest) {
   const widgetId = req.nextUrl.searchParams.get("widgetId");
   if (!widgetId) {
-    return NextResponse.json({ error: "Widget ID is required" }, { status: 400 });
+    return withCors(NextResponse.json({ error: "Widget ID is required" }, { status: 400 }));
   }
 
   try {
@@ -18,12 +37,12 @@ export async function GET(req: NextRequest) {
       .limit(1);
 
     if (!meta) {
-      return NextResponse.json({ error: "Bot not found" }, { status: 404 });
+      return withCors(NextResponse.json({ error: "Bot not found" }, { status: 404 }));
     }
 
     const origin = req.headers.get("origin");
-    if (meta.allowed_domain && origin !== meta.allowed_domain) {
-      return new NextResponse("Unauthorized domain", { status: 403 });
+    if (meta.allowed_domain && origin && origin !== meta.allowed_domain) {
+      return withCors(new NextResponse("Unauthorized domain", { status: 403 }), meta.allowed_domain);
     }
 
     const userSections = await db
@@ -41,10 +60,9 @@ export async function GET(req: NextRequest) {
       sections: userSections,
     });
 
-    response.headers.set("Access-Control-Allow-Origin", meta.allowed_domain || "*");
-    return response;
+    return withCors(response, meta.allowed_domain || origin);
   } catch (error) {
     console.error("Widget Config Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return withCors(NextResponse.json({ error: "Internal Server Error" }, { status: 500 }));
   }
 }

@@ -28,8 +28,8 @@ const EmbedCodeConfig = ({ chatbotId, widgetId, scriptSrc }: EmbedCodeConfigProp
   const resolvedSrc = scriptSrc || DEFAULT_WIDGET_SRC;
 
   const codeSnippet = resolvedId
-    ? `<script src="${resolvedSrc}"\n  data-id="${resolvedId}"\n  defer>\n</script>`
-    : `<script src="${resolvedSrc}"\n  data-id="YOUR_WIDGET_ID"\n  defer>\n</script>`;
+    ? `<script src="${resolvedSrc}"\n  data-id="${resolvedId}"\n  data-theme="system"\n  defer>\n</script>`
+    : `<script src="${resolvedSrc}"\n  data-id="YOUR_WIDGET_ID"\n  data-theme="system"\n  defer>\n</script>`;
 
   const handleCopyCode = async () => {
     if (!resolvedId) {
