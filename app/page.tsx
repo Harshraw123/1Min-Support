@@ -18,9 +18,10 @@ const Index = async () => {
     <div className="min-h-screen">
       <Navbar user={user}  />
       <HeroSection isAuthenticated={Boolean(user)} serverUser={user} />
-      <FeaturesSectionServer />
-      <TestimonialsSectionServer />
       <ProcessFlow/>
+      <TestimonialsSectionServer />
+      
+      <FeaturesSectionServer />
       <FaqSectionServer />
       <CTASectionServer />
       <FooterServer />

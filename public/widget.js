@@ -3,6 +3,8 @@
   const widgetId = script && script.getAttribute("data-id");
   const scriptSrc = script && script.getAttribute("src");
   const baseUrl = scriptSrc ? new URL(scriptSrc, window.location.href).origin : window.location.origin;
+  const instanceId =
+    "oms-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
 
   const bubbleSize = { width: "65px", height: "65px" };
   const chatSize = { width: "400px", height: "600px" };
@@ -56,6 +58,7 @@
     embedUrl.searchParams.set("widgetId", widgetId);
     embedUrl.searchParams.set("sessionToken", options.token);
     embedUrl.searchParams.set("theme", options.theme || "system");
+    embedUrl.searchParams.set("instanceId", instanceId);
 
     iframe.src = embedUrl.toString();
     iframe.title = "OneMinute Support Chat";
@@ -84,6 +87,7 @@
             token: options.token,
             config: options.config,
             theme: options.theme || "system",
+            instanceId: instanceId,
           },
           baseUrl
         );
@@ -91,7 +95,15 @@
     });
 
     window.addEventListener("message", function (event) {
-      if (event.origin !== baseUrl || !event.data || event.data.type !== "resize") return;
+      if (
+        event.origin !== baseUrl ||
+        event.source !== iframe.contentWindow ||
+        !event.data ||
+        event.data.type !== "resize" ||
+        event.data.instanceId !== instanceId
+      ) {
+        return;
+      }
 
       const width = typeof event.data.width === "string" ? event.data.width : bubbleSize.width;
       const height = typeof event.data.height === "string" ? event.data.height : bubbleSize.height;

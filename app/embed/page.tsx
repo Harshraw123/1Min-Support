@@ -46,7 +46,8 @@ const POST_MESSAGE_TARGET = "*";
 // ---------------------------------------------------------------------------
 function sendResize(width: string, height: string) {
   if (typeof window === "undefined") return;
-  window.parent.postMessage({ type: "resize", width, height }, POST_MESSAGE_TARGET);
+  const instanceId = readString(new URLSearchParams(window.location.search).get("instanceId"));
+  window.parent.postMessage({ type: "resize", width, height, instanceId }, POST_MESSAGE_TARGET);
 }
 
 function readString(value: unknown) {
@@ -58,11 +59,16 @@ function parseUiTheme(value: unknown): UiTheme | undefined {
   return undefined;
 }
 
+function normalizeColor(value: unknown) {
+  const color = readString(value);
+  return color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : undefined;
+}
+
 function normalizeConfig(payload?: WidgetConfigPayload | null): WidgetConfig {
   return {
     color:
-      readString(payload?.primaryColor) ??
-      readString(payload?.color) ??
+      normalizeColor(payload?.primaryColor) ??
+      normalizeColor(payload?.color) ??
       DEFAULT_CONFIG.color,
     businessName:
       readString(payload?.businessName) ??

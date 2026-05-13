@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface ChatContainerProps {
   token: string;
@@ -9,12 +9,31 @@ interface ChatContainerProps {
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
+function normalizeColor(value?: string) {
+  const color = value?.trim();
+  return color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#2563eb";
+}
+
 const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => {
+  const accentColor = normalizeColor(color);
+  const resolvedInitialMessage = initialMessage || "Hi there! How can I help you today?";
+  const widgetThemeStyle = {
+    "--widget-primary": accentColor,
+  } as React.CSSProperties;
+
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "assistant", content: initialMessage || "Hi there! How can I help you today?" },
+    { role: "assistant", content: resolvedInitialMessage },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length !== 1 || prev[0]?.role !== "assistant") return prev;
+      if (prev[0].content === resolvedInitialMessage) return prev;
+      return [{ role: "assistant", content: resolvedInitialMessage }];
+    });
+  }, [resolvedInitialMessage]);
 
   const handleSend = async () => {
     if (!token.trim() || !input.trim() || isTyping) return;
@@ -68,7 +87,25 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="widget-chat-theme flex flex-col h-full min-h-0" style={widgetThemeStyle}>
+      <style>
+        {`
+          .widget-chat-theme ::selection {
+            background: color-mix(in srgb, var(--widget-primary) 22%, transparent);
+            color: inherit;
+          }
+
+          .widget-chat-theme ::-moz-selection {
+            background: color-mix(in srgb, var(--widget-primary) 22%, transparent);
+            color: inherit;
+          }
+
+          .widget-chat-theme input:focus {
+            border-color: var(--widget-primary);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--widget-primary) 28%, transparent);
+          }
+        `}
+      </style>
       <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
@@ -78,9 +115,10 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
             <div
               className={`max-w-[80%] rounded-lg px-4 py-2 ${
                 message.role === "user"
-                  ? "bg-primary text-primary-foreground"
+                  ? "text-white"
                   : "bg-muted text-foreground"
               }`}
+              style={message.role === "user" ? { backgroundColor: accentColor } : undefined}
             >
               {message.content}
             </div>
@@ -118,15 +156,15 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
               }
             }}
             placeholder="Type your message..."
-            className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none"
             disabled={isTyping}
           />
           <button
             type="button"
             onClick={() => void handleSend()}
             disabled={isTyping || !token.trim() || !input.trim()}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            style={{ backgroundColor: color }}
+            className="px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            style={{ backgroundColor: accentColor }}
           >
             Send
           </button>
