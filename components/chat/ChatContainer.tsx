@@ -7,42 +7,73 @@ interface ChatContainerProps {
   color?: string;
 }
 
+type ChatMessage = { role: "user" | "assistant"; content: string };
+
 const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => {
-  const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([
-    { role: "assistant", content: initialMessage || "Hi there! How can I help you today?" }
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: "assistant", content: initialMessage || "Hi there! How can I help you today?" },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const handleSend = () => {
-    if (!token.trim() || !input.trim()) return;
-    
-    const userMessage = { role: "user", content: input };
-    setMessages(prev => [...prev, userMessage]);
+  const handleSend = async () => {
+    if (!token.trim() || !input.trim() || isTyping) return;
+
+    const userMessage: ChatMessage = { role: "user", content: input.trim() };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInput("");
     setIsTyping(true);
 
-    // Simulate assistant response
-    setTimeout(() => {
-      const assistantMessage = { 
-        role: "assistant", 
-        content: "This is a placeholder response. The actual chat functionality will be implemented with your backend API." 
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+    try {
+      const response = await fetch("/api/widget/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token.trim()}`,
+        },
+        body: JSON.stringify({
+          messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      const data = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
+
+      if (!response.ok) {
+        const errText =
+          typeof data?.error === "string" && data.error.trim()
+            ? data.error.trim()
+            : `Request failed (${response.status})`;
+        throw new Error(errText);
+      }
+
+      const assistantMessage =
+        typeof data?.message === "string" && data.message.trim()
+          ? data.message.trim()
+          : "Sorry, I could not generate a response.";
+
+      setMessages((prev) => [...prev, { role: "assistant", content: assistantMessage }]);
+    } catch (e) {
+      console.error("[embed chat]", e);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Sorry, something went wrong. Please refresh and try again.",
+        },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`flex ${
-              message.role === "user" ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
               className={`max-w-[80%] rounded-lg px-4 py-2 ${
@@ -60,28 +91,39 @@ const ChatContainer = ({ token, initialMessage, color }: ChatContainerProps) => 
             <div className="bg-muted text-foreground rounded-lg px-4 py-2">
               <div className="flex space-x-1">
                 <div className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" />
-                <div className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0.1s" }} />
-                <div className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce" style={{ animationDelay: "0.2s" }} />
+                <div
+                  className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce"
+                  style={{ animationDelay: "0.1s" }}
+                />
+                <div
+                  className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce"
+                  style={{ animationDelay: "0.2s" }}
+                />
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Input */}
-      <div className="border-t border-border p-4">
+      <div className="border-t border-border p-4 shrink-0">
         <div className="flex space-x-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSend()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void handleSend();
+              }
+            }}
             placeholder="Type your message..."
             className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={isTyping}
           />
           <button
-            onClick={handleSend}
+            type="button"
+            onClick={() => void handleSend()}
             disabled={isTyping || !token.trim() || !input.trim()}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             style={{ backgroundColor: color }}

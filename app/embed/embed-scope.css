@@ -1,0 +1,29 @@
+/**
+ * Embed route only (imported from app/embed/layout.tsx).
+ *
+ * Parent / host page stylesheets do NOT apply inside this iframe document.
+ * This file only: (1) creates a predictable stacking/root boundary, (2) pins
+ * base semantics for links / form controls when rich content is added later.
+ */
+
+[data-embed-widget-root] {
+  isolation: isolate;
+}
+
+[data-embed-widget-root] :where(a) {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+[data-embed-widget-root] a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+[data-embed-widget-root] :where(button, input, textarea, select) {
+  font: inherit;
+}
+
+[data-embed-widget-root] :where(input, textarea) {
+  color: inherit;
+}
