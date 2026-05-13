@@ -19,7 +19,7 @@ interface EmbedCodeConfigProps {
   scriptSrc?: string;
 }
 
-const DEFAULT_WIDGET_SRC = "https://oneminutestack.com/widget.js";
+const DEFAULT_WIDGET_SRC = "https://1-min-support.vercel.app/widget.js";
 
 const EmbedCodeConfig = ({ chatbotId, widgetId, scriptSrc }: EmbedCodeConfigProps) => {
   const [copied, setCopied] = useState(false);
