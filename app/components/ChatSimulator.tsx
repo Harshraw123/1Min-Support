@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { RefreshCw, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import { ChatSimulatorProps, Message, Section } from "@/@types/types";
+import { ChatSimulatorProps } from "@/@types/types";
 import Image from "next/image";
 
 
@@ -41,8 +41,6 @@ const ChatSimulator = ({
   scrollRef,
   welcomeMessage,
   activeSection,
-  sections,
-  handleSectionClick,
 }: ChatSimulatorProps) => {
   const canSend = !!activeSection && !isTyping && !!input.trim();
 
@@ -78,27 +76,6 @@ const ChatSimulator = ({
               {welcomeMessage || "Hi there, How can I help you today?"}
             </div>
           </div>
-
-          {/* Context switcher always visible for dynamic section switching */}
-          {sections.length > 0 && (
-            <div className="ml-11 flex flex-wrap items-center gap-1.5">
-              {sections.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => handleSectionClick(s.id)}
-                  aria-pressed={activeSection === s.id}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-[11px] font-medium transition-all",
-                    activeSection === s.id
-                      ? "border-primary/50 bg-primary/10 text-foreground"
-                      : "border-border/60 bg-white/60 text-muted-foreground hover:border-primary/30 hover:bg-white hover:text-foreground"
-                  )}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          )}
 
           {messages.map((m, i) => (
             <div

@@ -45,6 +45,4 @@ export interface ChatSimulatorProps {
   scrollRef: React.RefObject<HTMLDivElement | null>;
   welcomeMessage: string;
   activeSection: string | null;
-  sections: Section[];
-  handleSectionClick: (id: string) => void;
 }

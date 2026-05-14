@@ -229,15 +229,6 @@ const ChatbotPage = () => {
     }
   };
 
-  const handleSectionClick = (id: string) => {
-    setActiveSection(id);
-    const sectionName = sections.find((section) => section.id === id)?.name ?? id;
-    toast.info(`Switched to ${sectionName} context`);
-    // Reset chat messages when switching context to avoid confusion
-    setMessages([]);
-    setIsTyping(false);
-  };
-
   const handleReset = () => {
     setMessages([]);
     setIsTyping(false);
@@ -318,12 +309,10 @@ const ChatbotPage = () => {
               messages={messages}
               primaryColor={primaryColor}
               avatarSrc={avatarSrc}
-              sections={sections}
               input={input}
               setInput={setInput}
               handleSend={handleSend}
               handleKeyDown={handleKeyDown}
-              handleSectionClick={handleSectionClick}
               activeSection={activeSection}
               isTyping={isTyping}
               handleReset={handleReset}

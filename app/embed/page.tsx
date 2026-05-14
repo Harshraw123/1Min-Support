@@ -296,7 +296,6 @@ const EmbedContent = () => {
               color={primaryColor}
               sections={sections}
               activeSectionId={activeSectionId}
-              onSectionChange={setActiveSectionId}
             />
           </div>
         </div>

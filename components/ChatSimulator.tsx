@@ -39,8 +39,6 @@ const ChatSimulator = ({
   scrollRef,
   welcomeMessage,
   activeSection,
-  sections,
-  handleSectionClick,
 }: ChatSimulatorProps) => {
   const canSend = !!activeSection && !isTyping && !!input.trim();
 
@@ -76,40 +74,6 @@ const ChatSimulator = ({
               {welcomeMessage || "Hi there, How can I help you today?"}
             </div>
           </div>
-
-          {/* Context switcher always visible for dynamic section switching */}
-          {sections.length > 0 && (
-            <div className="ml-11 flex flex-wrap items-center gap-1.5">
-              {sections.map((s) => {
-                const active = activeSection === s.id;
-
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => handleSectionClick(s.id)}
-                    aria-pressed={active}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-[11px] font-medium transition-all",
-                      active
-                        ? "bg-white/80"
-                        : "border-border/60 bg-white/60 text-muted-foreground hover:bg-white hover:text-foreground"
-                    )}
-                    style={
-                      active
-                        ? {
-                            borderColor: primaryColor,
-                            color: primaryColor,
-                            backgroundColor: `${primaryColor}1A`,
-                          }
-                        : undefined
-                    }
-                  >
-                    {s.name}
-                  </button>
-                );
-              })}
-            </div>
-          )}
 
           {messages.map((m, i) => (
             <div

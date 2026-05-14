@@ -7,7 +7,6 @@ interface ChatContainerProps {
   color?: string;
   sections?: ChatSection[];
   activeSectionId?: string | null;
-  onSectionChange?: (id: string) => void;
 }
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -24,7 +23,6 @@ const ChatContainer = ({
   color,
   sections = [],
   activeSectionId,
-  onSectionChange,
 }: ChatContainerProps) => {
   const accentColor = normalizeColor(color);
   const resolvedInitialMessage = initialMessage || "Hi there! How can I help you today?";
@@ -118,32 +116,6 @@ const ChatContainer = ({
         `}
       </style>
       <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-        {hasSections && (
-          <div className="flex flex-wrap gap-1.5">
-            {sections.map((section) => {
-              const active = activeSectionId === section.id;
-
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => onSectionChange?.(section.id)}
-                  aria-pressed={active}
-                  className="rounded-full border px-3 py-1 text-[11px] font-medium transition-all disabled:cursor-not-allowed disabled:opacity-60"
-                  style={{
-                    borderColor: active ? accentColor : undefined,
-                    backgroundColor: active ? `${accentColor}1A` : undefined,
-                    color: active ? accentColor : undefined,
-                  }}
-                  disabled={isTyping}
-                >
-                  {section.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
         {messages.map((message, index) => (
           <div
             key={index}
