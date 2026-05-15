@@ -47,7 +47,7 @@ const ChatSimulator = ({
   return (
     <div className="flex h-full  w-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/30 bg-linear-to-br from-primary/5 to-accent/5 px-5 py-3">
+      <div className="flex items-center justify-between border-b border-border/60 bg-linear-to-br from-primary/5 to-accent/5 px-5 py-3">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
             <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/60" />
@@ -72,7 +72,7 @@ const ChatSimulator = ({
           {/* Welcome bubble */}
           <div className="flex items-start gap-2.5">
             <Avatar color={primaryColor} src={avatarSrc} />
-            <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white/90 px-4 py-2.5 text-sm text-foreground shadow-sm ring-1 ring-border/40">
+            <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-muted/70 px-4 py-2.5 text-sm text-foreground shadow-sm ring-1 ring-border/50">
               {welcomeMessage || "Hi there, How can I help you today?"}
             </div>
           </div>
@@ -91,7 +91,7 @@ const ChatSimulator = ({
                   "max-w-[78%] rounded-2xl px-4 py-2.5 text-sm shadow-sm",
                   m.role === "user"
                     ? "rounded-tr-sm text-white"
-                    : "rounded-tl-sm bg-white/90 text-foreground ring-1 ring-border/40"
+                    : "rounded-tl-sm bg-muted/70 text-foreground ring-1 ring-border/50"
                 )}
                 style={m.role === "user" ? { backgroundColor: primaryColor } : undefined}
               >
@@ -102,7 +102,7 @@ const ChatSimulator = ({
 {isTyping && (
   <div className="flex items-start gap-2.5">
     <Avatar color={primaryColor} src={avatarSrc} />
-    <div className="rounded-2xl rounded-tl-sm bg-white/90 px-4 py-3 shadow-sm ring-1 ring-border/40">
+    <div className="rounded-2xl rounded-tl-sm bg-muted/70 px-4 py-3 shadow-sm ring-1 ring-border/50">
       <div className="flex items-center gap-1">
         <span
           className="h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.3s]"
@@ -125,7 +125,7 @@ const ChatSimulator = ({
       </ScrollArea>
 
       {/* Input */}
-      <div className="border-t border-white/30 bg-white/60 px-4 py-3 backdrop-blur-xl">
+      <div className="border-t border-border/60 bg-card/70 px-4 py-3 backdrop-blur-xl">
         <div className="relative">
           <Textarea
             value={input}

@@ -47,10 +47,10 @@ const EmbedCodeConfig = ({ chatbotId, widgetId, scriptSrc }: EmbedCodeConfigProp
   };
 
   return (
-    <Card className="glass overflow-hidden rounded-2xl border-white/40 p-0">
+    <Card className="glass overflow-hidden rounded-2xl border-border/70 p-0">
       <CardContent className="p-0">
         {/* Header Area */}
-        <div className="flex items-center gap-2 border-b border-white/30 bg-linear-to-br from-primary/5 to-accent/5 px-5 py-3">
+        <div className="flex items-center gap-2 border-b border-border/60 bg-linear-to-br from-primary/5 to-accent/5 px-5 py-3">
           <Terminal className="h-4 w-4 text-primary" />
           <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground">
             Install Chatbot

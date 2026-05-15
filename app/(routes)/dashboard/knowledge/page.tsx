@@ -65,7 +65,7 @@ const Page = () => {
           <h1 className="text-2xl font-semibold tracking-tight">
             Knowledge Base
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage your website sources, documents, and uploads here.
           </p>
         </div>

@@ -304,7 +304,7 @@ const ChatbotPage = () => {
         {/* ── Main grid ── */}
         <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-5">
           {/* Left: Chat simulator */}
-          <Card className="glass-strong flex min-h-0 flex-col overflow-hidden rounded-2xl border-white/40 p-0">
+          <Card className="glass-strong flex min-h-0 flex-col overflow-hidden rounded-2xl border-border/70 p-0">
             <ChatSimulator
               messages={messages}
               primaryColor={primaryColor}
@@ -323,9 +323,9 @@ const ChatbotPage = () => {
 
           {/* Right column: Appearance + Embed */}
           <div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
-            <Card className="glass flex shrink-0 flex-col overflow-hidden rounded-2xl border-white/40 p-0">
+            <Card className="glass flex shrink-0 flex-col overflow-hidden rounded-2xl border-border/70 p-0">
               {/* Card header */}
-              <div className="shrink-0 border-b border-white/30 bg-linear-to-br from-primary/5 to-accent/5 px-4 py-2.5">
+              <div className="shrink-0 border-b border-border/60 bg-linear-to-br from-primary/5 to-accent/5 px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <Palette className="h-4 w-4 text-primary" />
                   <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-foreground">
@@ -395,7 +395,7 @@ const ChatbotPage = () => {
               </div>
 
               {/* Save button */}
-              <div className="shrink-0 border-t border-white/20 px-4 py-3">
+              <div className="shrink-0 border-t border-border/60 px-4 py-3">
                 <Button
                   onClick={handleSave}
                   disabled={isSaving || isLoadingMeta}

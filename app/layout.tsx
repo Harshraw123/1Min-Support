@@ -39,7 +39,7 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange
+          storageKey="one-minute-support-theme"
         >
           {children}
           <AuthToastHandler />

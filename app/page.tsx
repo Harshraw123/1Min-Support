@@ -15,7 +15,7 @@ const Index = async () => {
   const user = await getSession();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar user={user}  />
       <HeroSection isAuthenticated={Boolean(user)} serverUser={user} />
       <ProcessFlow/>

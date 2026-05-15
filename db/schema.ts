@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, boolean, index } from "drizzle-orm/pg-core";
 
 /**
  * ================================
@@ -174,6 +174,106 @@ export const team_members = pgTable("team_members", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
+export const conversation = pgTable(
+  "conversation",
+  {
+    id: text("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    chatbot_id: text("chatbot_id").notNull(),
+
+    user_email: text("user_email"),
+
+    visitor_ip: text("visitor_ip"),
+
+    name: text("name"),
+
+    status: text("status", {
+      enum: ["active", "closed"],
+    }).default("active"),
+
+    last_message_at: timestamp("last_message_at")
+      .defaultNow(),
+
+    created_at: timestamp("created_at")
+      .defaultNow(),
+  },
+
+  (table) => [
+    index("conversation_chatbot_idx").on(table.chatbot_id),
+    index("conversation_created_idx").on(table.created_at),
+  ]
+);
+
+/* =====================================================
+   MESSAGES
+===================================================== */
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: text("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    conversation_id: text("conversation_id")
+      .notNull(),
+
+    role: text("role", {
+      enum: ["user", "assistant"],
+    }).notNull(),
+
+    content: text("content").notNull(),
+
+    is_streaming: boolean("is_streaming")
+      .default(false),
+
+    created_at: timestamp("created_at")
+      .defaultNow(),
+  },
+
+  (table) => [
+    index("messages_conversation_idx").on(table.conversation_id),
+    index("messages_created_idx").on(table.created_at),
+  ]
+);
+
+/* =====================================================
+   WIDGETS
+===================================================== */
+
+export const widgets = pgTable(
+  "widgets",
+  {
+    id: text("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    organization_id: text("organization_id")
+      .notNull(),
+
+    name: text("name")
+      .notNull(),
+
+    public_key: text("public_key")
+      .notNull(),
+
+    allowed_domains: text("allowed_domains")
+      .array(),
+
+    status: text("status", {
+      enum: ["active", "disabled"],
+    }).default("active"),
+
+    created_at: timestamp("created_at")
+      .defaultNow(),
+  },
+
+  (table) => [
+    index("widget_org_idx").on(table.organization_id),
+  ]
+);
 // Backward-compatible aliases for older imports.
 export const User = users;
 export const teamMembers = team_members;

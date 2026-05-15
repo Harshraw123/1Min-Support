@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import type { SessionUser } from "@/lib/getSession";
 import { useAuthSync } from "@/hooks/useAuthSync";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 function getDisplayName(user: SessionUser | null): string {
   if (!user) return "";
@@ -89,6 +90,7 @@ export default function NavbarClient({ user: serverUser }: { user: SessionUser |
 
         {/* Desktop Auth */}
         <div className="hidden md:flex items-center gap-2 lg:gap-3">
+          <ThemeToggle />
           {isLoading ? (
             <div className="w-20 h-8 bg-muted animate-pulse rounded" />
           ) : !user ? (
@@ -146,12 +148,16 @@ export default function NavbarClient({ user: serverUser }: { user: SessionUser |
         </div>
 
         {/* Mobile Toggle */}
-        <button
-          className="md:hidden"
-          onClick={() => setOpen(!open)}
-        >
-          {open ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/70 text-foreground transition-colors hover:bg-muted"
+            onClick={() => setOpen(!open)}
+            aria-label="Toggle navigation menu"
+          >
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}

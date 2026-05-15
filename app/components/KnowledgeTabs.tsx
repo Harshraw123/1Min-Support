@@ -9,9 +9,9 @@ const tabMeta: Record<KnowledgeType, { title: string; icon: React.ReactNode; col
 };
 
 const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-  indigo:  { bg: "bg-[#EEEDFE]", text: "text-[#534AB7]", border: "border-[#534AB7]" },
-  emerald: { bg: "bg-[#E1F5EE]", text: "text-[#0F6E56]", border: "border-[#0F6E56]" },
-  amber:   { bg: "bg-[#FAEEDA]", text: "text-[#854F0B]", border: "border-[#854F0B]" },
+  indigo:  { bg: "bg-primary/10", text: "text-primary", border: "border-primary/50" },
+  emerald: { bg: "bg-emerald-500/12", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/45" },
+  amber:   { bg: "bg-brand-orange/12", text: "text-brand-orange", border: "border-brand-orange/45" },
 };
 
 export default function KnowledgeTabs({

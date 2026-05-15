@@ -15,7 +15,7 @@ const FeaturesSection = () => {
   const { ref, isVisible } = useScrollReveal();
 
   return (
-    <section id="features" className="py-24 sm:py-32 relative overflow-hidden bg-white/40 backdrop-blur-sm">
+    <section id="features" className="relative overflow-hidden bg-background/55 py-24 backdrop-blur-sm sm:py-32">
 
 
       <div className="container mx-auto px-6 max-w-7xl">
@@ -77,7 +77,7 @@ const FeaturesSection = () => {
                 alt="OneMinute Support AI assistant robot mascot"
                 fill
                 sizes="(min-width: 640px) 360px, 280px"
-                className="object-contain drop-shadow-[0_25px_45px_rgba(139,92,246,0.35)]"
+                className="object-contain drop-shadow-2xl"
                 priority={false}
               />
             </div>

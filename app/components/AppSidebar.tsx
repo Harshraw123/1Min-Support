@@ -145,7 +145,7 @@ export function AppSidebar() {
 
         {/* Upgrade card */}
         {!collapsed && (
-          <div className="mx-3 mt-4 rounded-xl border  p-4 ">
+          <div className="mx-3 mt-4 rounded-xl border border-sidebar-border bg-sidebar-accent/45 p-4 shadow-sm">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
               <span className="text-xs font-semibold text-foreground">
@@ -155,7 +155,7 @@ export function AppSidebar() {
             <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
               Unlock unlimited AI conversations & advanced analytics.
             </p>
-            <button className="mt-3 hover:cursor-pointer w-full border-2 rounded-md y px-3 py-1.5 text-xs font-semibold shadow-sm">
+            <button className="mt-3 w-full rounded-md border border-sidebar-border bg-background/70 px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors hover:cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
               Upgrade now
             </button>
           </div>

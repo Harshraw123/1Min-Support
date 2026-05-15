@@ -102,7 +102,7 @@ const HeroSection = ({ isAuthenticated, serverUser }: HeroSectionProps) => {
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-3 shadow-sm dark:border-border dark:bg-muted/30">
+              <div className="mt-3 flex items-center gap-2 rounded-xl border border-border/80 bg-background/80 px-4 py-3 shadow-sm">
                 <input
                   type="text"
                   placeholder="Type a message..."

@@ -3,9 +3,9 @@ import type { KnowledgeType } from "@/@types/types";
 
 // 🎨 UI config
 export const colorMap = {
-  indigo: { bg: "bg-[#534AB7]", text: "text-white" },
-  emerald: { bg: "bg-[#0F6E56]", text: "text-white" },
-  amber: { bg: "bg-[#854F0B]", text: "text-white" },
+  indigo: { bg: "bg-primary", text: "text-primary-foreground" },
+  emerald: { bg: "bg-emerald-600 dark:bg-emerald-500", text: "text-white" },
+  amber: { bg: "bg-brand-orange", text: "text-primary-foreground" },
 } as const;
 
 export type KnowledgeTabColor = keyof typeof colorMap;

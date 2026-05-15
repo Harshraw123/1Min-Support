@@ -43,9 +43,9 @@ const QuickActions = ({ onOpenModal }: Props) => {
   ];
 
   const colorMap: Record<string, { bg: string; text: string }> = {
-    indigo: { bg: "bg-[#EEEDFE]", text: "text-[#534AB7]" },
-    emerald: { bg: "bg-[#E1F5EE]", text: "text-[#0F6E56]" },
-    amber: { bg: "bg-[#FAEEDA]", text: "text-[#854F0B]" },
+    indigo: { bg: "bg-primary/10", text: "text-primary" },
+    emerald: { bg: "bg-emerald-500/12", text: "text-emerald-600 dark:text-emerald-400" },
+    amber: { bg: "bg-brand-orange/12", text: "text-brand-orange" },
   };
 
   return (
@@ -57,7 +57,7 @@ const QuickActions = ({ onOpenModal }: Props) => {
           <button
             key={action.id}
             onClick={() => onOpenModal(action.id)}
-            className="flex flex-col items-center gap-3.5 text-center p-6 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-150 cursor-pointer shadow-sm"
+            className="flex flex-col items-center gap-3.5 rounded-xl border border-border bg-card p-6 text-center shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-muted/45 hover:shadow-md active:scale-[0.98]"
           >
             {/* Icon */}
             <div
@@ -68,10 +68,10 @@ const QuickActions = ({ onOpenModal }: Props) => {
 
             {/* Text */}
             <div>
-              <p className="text-sm font-semibold text-black mb-1">
+              <p className="mb-1 text-sm font-semibold text-foreground">
                 {action.title}
               </p>
-              <p className="text-xs text-zinc-500 leading-relaxed">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 {action.description}
               </p>
             </div>
