@@ -1,6 +1,6 @@
 // Next.js middleware for protecting dashboard routes
 
-import { getSession } from './lib/getSession';
+import { getSession } from '@/lib/auth/getSession';
 import { NextRequest, NextResponse } from "next/server";
 
 export async function proxy(req: NextRequest) {
@@ -27,6 +27,5 @@ export async function proxy(req: NextRequest) {
 export  const config = {
   matcher: '/dashboard/:path*',
 }
-
 
 
