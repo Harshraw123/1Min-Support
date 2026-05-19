@@ -4,6 +4,98 @@ This document summarizes real problems encountered while building the **embeddab
 
 ---
 
+## System overview: what I built
+
+This project is a **workspace-based AI customer support SaaS**. A business can create a chatbot, add knowledge sources, configure sections / AI behavior, and embed a support widget on its own website.
+
+**Core workflow:**
+
+```txt
+Dashboard user
+  -> creates chatbot / sections
+  -> ingests knowledge from upload, website, or text
+  -> content is summarized for UI
+  -> content is cleaned, chunked, embedded, and stored for future RAG
+  -> widget script is embedded on customer site
+  -> visitor chats with widget
+  -> backend verifies widget JWT
+  -> shared AI completion path answers from workspace knowledge
+  -> usage events are recorded for billing and analytics
+```
+
+**Architecture choices:**
+
+- **Next.js App Router** for dashboard, embed UI, and API routes.
+- **Drizzle ORM + PostgreSQL / Neon** for app data.
+- **pgvector inside Postgres** for embeddings, instead of Pinecone / Weaviate / Qdrant.
+- **Groq SDK with `llama-3.3-70b-versatile`** for summarization, cleaning, and chat completions.
+- **Hugging Face `BAAI/bge-small-en-v1.5`** for 384-dimensional embeddings.
+- **Workspace isolation through `session.organization_id`**.
+- **Widget auth through signed JWT**, separate from dashboard session auth.
+- **Append-only usage events** as the foundation for usage-based billing.
+
+**High-signal interview line:** *“I built a multi-tenant AI support system with two auth boundaries: dashboard users use session-based workspace identity, while public embed visitors use widget JWTs. The same AI logic is shared behind both paths, and ingestion prepares data for scalable RAG without adding an external vector database.”*
+
+---
+
+## RAG architecture: current and prepared path
+
+The current chat flow still preserves the tested behavior by loading selected knowledge content into the prompt, but the ingestion pipeline now prepares a scalable RAG path.
+
+**Ingestion path:**
+
+```txt
+Raw source
+  -> summarizeMarkdown()
+  -> store compact summary in knowledge.content
+  -> cleanContent()
+  -> chunkText()
+  -> embedChunks()
+  -> store chunks in knowledge_chunks
+  -> record usage_events
+```
+
+**Why two AI content steps exist:**
+
+- `summarizeMarkdown()` creates compact, human-friendly content for the dashboard UI.
+- `cleanContent()` keeps meaningful content intact for retrieval.
+- This avoids using a short summary as the only retrieval source.
+
+**Retrieval-ready storage:**
+
+```txt
+knowledge
+  - id
+  - workspace_id
+  - title
+  - content                 # compact summary for UI
+  - type
+  - source_url
+  - meta_data.tokenUsage
+
+knowledge_chunks
+  - id
+  - knowledge_id
+  - workspace_id
+  - chunk_index
+  - content                 # cleaned full-content chunk
+  - embedding vector(384)
+  - token_count
+```
+
+**Future retrieval plan:**
+
+- Embed user query.
+- Search `knowledge_chunks` with pgvector similarity.
+- Search text with `pg_trgm` keyword similarity.
+- Merge both rankings with Reciprocal Rank Fusion.
+- Return top chunks to the chat prompt.
+- Keep optional reranking isolated for later.
+
+**Interview line:** *“I kept the production chat behavior stable, but changed ingestion so every source is retrieval-ready. The system now has chunked content, 384-dimensional embeddings, pgvector storage, keyword search support, and usage tracking before switching chat fully to chunk retrieval.”*
+
+---
+
 ## 1. Embed / test page showed “nothing” (no bubble, no iframe)
 
 **Symptom:** The chatbot test page or exported embed appeared blank; users saw no launcher.
