@@ -4,6 +4,7 @@ interface CharCountProps {
   }
   
   export function CharCount({ value, max }: CharCountProps) {
+    // Character usage ko limit ke paas color hint ke saath dikhata hai.
     const len = value.length;
     const pct = len / max;
   

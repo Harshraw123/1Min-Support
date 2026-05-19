@@ -15,6 +15,13 @@
       "when": 1778698412945,
       "tag": "0001_fresh_union_jack",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779100800000,
+      "tag": "0002_usage_chunks_foundation",
+      "breakpoints": true
     }
   ]
 }

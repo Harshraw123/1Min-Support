@@ -20,6 +20,7 @@ export type SessionUser = {
 };
 
 function splitName(name: string): { firstName?: string; lastName?: string } {
+  // Full name ko first/last name shape me todta hai for UI compatibility.
   const trimmed = name.trim();
   if (!trimmed) return {};
   const [firstName, ...rest] = trimmed.split(/\s+/);
@@ -28,6 +29,7 @@ function splitName(name: string): { firstName?: string; lastName?: string } {
 }
 
 function parseUserSessionCookie(value: string | undefined): SessionUser | null {
+  // user_session cookie JSON ko normalized SessionUser object me parse karta hai.
   if (!value) return null;
 
   try {
@@ -60,6 +62,7 @@ function parseUserSessionCookie(value: string | undefined): SessionUser | null {
 }
 
 export async function getSession(): Promise<SessionUser | null> {
+  // Next cookies se current user session read karke server routes ko context deta hai.
   const sessionCookies = await cookies();
   const userSessionCookie = sessionCookies.get("user_session")?.value;
   return parseUserSessionCookie(userSessionCookie);

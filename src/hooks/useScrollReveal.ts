@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 export function useScrollReveal<T extends HTMLElement = HTMLDivElement>(
   threshold = 0.15
 ) {
+  // Element viewport me aate hi once-only reveal state true ho jati hai.
   const ref = useRef<T>(null);
   const [isVisible, setIsVisible] = useState(false);
 

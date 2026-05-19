@@ -28,6 +28,7 @@ type SectionRecord = {
   fallback_behavior: string | null;
 };
 
+// Chatbot playground appearance settings, section selection aur test chat ko jodta hai.
 const ChatbotPage = () => {
   const [primaryColor, setPrimaryColor] = useState("#111827");
   const [avatarSrc, setAvatarSrc] = useState(AVATAR_PRESETS[0].src);
@@ -55,6 +56,7 @@ const ChatbotPage = () => {
     const controller = new AbortController();
 
     const fetchMetadata = async () => {
+      // Saved chatbot look-and-feel load karke controls aur preview sync karte hain.
       try {
         setIsLoadingMeta(true);
         const response = await fetch("/api/chatbot/metadata/fetch", {
@@ -115,6 +117,7 @@ const ChatbotPage = () => {
     const controller = new AbortController();
 
     const fetchSections = async () => {
+      // Available sections load hote hain taaki test chat correct behavior use kare.
       try {
         const response = await fetch("/api/sections/fetch", {
           method: "GET",
@@ -149,6 +152,7 @@ const ChatbotPage = () => {
   }, []);
 
   useEffect(() => {
+    // Default section valid ho to wahi select hota hai, warna first available section.
     setActiveSection((prev) => {
       if (sections.length === 0) return null;
       if (prev && sections.some((section) => section.id === prev)) return prev;
@@ -160,6 +164,7 @@ const ChatbotPage = () => {
   }, [defaultSectionId, sections]);
 
   const handleSend = async () => {
+    // User message selected section aur linked sources ke saath test chat API ko bhejte hain.
     if (!activeSection || isTyping) return;
     const trimmedInput = input.trim();
     if (!trimmedInput) return;
@@ -236,6 +241,7 @@ const ChatbotPage = () => {
   };
 
   const handleSave = async () => {
+    // Appearance settings aur default section backend me persist hote hain.
     try {
       setIsSaving(true);
 

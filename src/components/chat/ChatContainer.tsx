@@ -13,6 +13,7 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 type ChatSection = { id: string; name: string };
 
 function normalizeColor(value?: string) {
+  // Widget ko invalid color se bachane ke liye safe hex fallback lagta hai.
   const color = value?.trim();
   return color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#2563eb";
 }
@@ -24,6 +25,7 @@ const ChatContainer = ({
   sections = [],
   activeSectionId,
 }: ChatContainerProps) => {
+  // Public embed chat token, theme aur selected section ke saath live conversation chalata hai.
   const accentColor = normalizeColor(color);
   const resolvedInitialMessage = initialMessage || "Hi there! How can I help you today?";
   const hasSections = sections.length > 0;
@@ -38,12 +40,14 @@ const ChatContainer = ({
   const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
+    // Section ya welcome message change ho to widget fresh greeting se reset hota hai.
     setMessages([{ role: "assistant", content: resolvedInitialMessage }]);
     setInput("");
     setIsTyping(false);
   }, [activeSectionId, resolvedInitialMessage]);
 
   const handleSend = async () => {
+    // Embed user message bearer token ke saath widget chat API ko send hota hai.
     if (!token.trim() || !input.trim() || isTyping || (hasSections && !activeSectionId)) return;
 
     const userMessage: ChatMessage = { role: "user", content: input.trim() };

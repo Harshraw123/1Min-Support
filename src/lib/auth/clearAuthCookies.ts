@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-// Create a response that clears cookies and redirects
 export function createClearCookiesResponse(redirectUrl: string) {
+  // Logout redirect response banate waqt auth cookies expire kar deta hai.
   const response = NextResponse.redirect(redirectUrl);
   
   response.cookies.set("access_token", "", { 

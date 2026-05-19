@@ -16,6 +16,7 @@ const REPLY_PRIME_TOKENS = 3;
  * Useful for measuring individual messages or knowledge source chunks.
  */
 export function countTokens(text: string): number {
+  // Rough chars-to-token estimate single string ke budget ke liye use hota hai.
   if (!text) return 0;
   return Math.ceil(text.length / CHARS_PER_TOKEN);
 }
@@ -30,6 +31,7 @@ export function countTokens(text: string): number {
 export function countConversationTokens(
   messages: { role: string; content: string }[]
 ): number {
+  // Chat history ka total token estimate model context limit guard karta hai.
   if (!messages?.length) return 0;
 
   let totalTokens = REPLY_PRIME_TOKENS;

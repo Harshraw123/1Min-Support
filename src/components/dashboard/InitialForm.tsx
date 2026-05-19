@@ -37,6 +37,7 @@ const STEPS = [
   },
 ];
 
+// Initial setup wizard user se business info step-by-step collect karta hai.
 const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>({
@@ -49,6 +50,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
 
   const validateStep = useCallback(
     (currentStep: number): boolean => {
+      // Current step ki required field validate karke next step allow hota hai.
       const newErrors: FormErrors = {};
       if (currentStep === 1 && !formData.businessName.trim()) {
         newErrors.businessName = "Business name is required";
@@ -71,6 +73,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
   );
 
   const handleNext = useCallback(async () => {
+    // Valid step ho to wizard aage badhta hai, last step par submit trigger hota hai.
     if (!validateStep(step)) return;
     if (step < 3) {
       setStep((prev) => prev + 1);
@@ -97,6 +100,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onSubmit }) => {
 
   const updateFormData = useCallback(
     (field: keyof FormData, value: string) => {
+      // Field update hote hi uska old error clear kar dete hain.
       setFormData((prev) => ({ ...prev, [field]: value }));
       if (errors[field as keyof FormErrors]) {
         setErrors((prev) => ({ ...prev, [field]: undefined }));

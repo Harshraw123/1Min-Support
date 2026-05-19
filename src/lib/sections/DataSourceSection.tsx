@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { KnowledgeSource, SectionFormFieldsSharedProps } from "./types";
 
 const getSourceLabel = (source: KnowledgeSource) =>
+  // Source ka display name title se, fallback URL ya Untitled se banta hai.
   source.title || source.source_url || "Untitled";
 
 function DataSourcesSection({
@@ -21,6 +22,7 @@ function DataSourcesSection({
   | "isLoadingSources"
   | "isDisabled"
 >) {
+  // Section ke saath attach hone wale knowledge sources select/deselect karata hai.
   const toggleSource = (id: string) => {
     setSelectedSources(
       selectedSources.includes(id)

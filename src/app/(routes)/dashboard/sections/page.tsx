@@ -79,6 +79,7 @@ const INITIAL_FORM_DATA: FormData = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseSourceIds(raw: string | null): string[] {
+  // DB me source_ids JSON string hai, UI ke liye string array me normalize hota hai.
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as unknown;
@@ -92,6 +93,7 @@ function parseSourceIds(raw: string | null): string[] {
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
+  // Section na ho to user ko direct create action dikhta hai.
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
       <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
@@ -113,6 +115,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const Page = () => {
+  // Sections page topic-wise AI behavior create, edit aur delete karne ka main screen hai.
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [isLoadingSources, setIsLoadingSources] = useState(true);
@@ -136,6 +139,7 @@ const Page = () => {
   // ── Fetchers ────────────────────────────────────────────────────────────────
 
   const fetchSources = useCallback(async () => {
+    // Section form ke source picker ke liye available knowledge sources load hote hain.
     setIsLoadingSources(true);
     try {
       const res = await fetch("/api/knowledge/fetch");
@@ -151,6 +155,7 @@ const Page = () => {
   }, []);
 
   const fetchSections = useCallback(async () => {
+    // Table ke liye workspace ke sections backend se reload hote hain.
     setIsLoadingSections(true);
     try {
       const res = await fetch("/api/sections/fetch");
@@ -186,6 +191,7 @@ const Page = () => {
   };
 
   const openEdit = (section: Section) => {
+    // Existing section ko sheet form me hydrate karke edit mode on hota hai.
     editingSectionRef.current = section;
     setIsNewSection(false);
     setFormData({
@@ -210,6 +216,7 @@ const Page = () => {
   // ── Save ─────────────────────────────────────────────────────────────────────
 
   const saveSection = async () => {
+    // Same save flow create aur update dono ko /api/sections/store par bhejta hai.
     if (isSaving) return;
 
     const name = formData.name.trim();
@@ -276,6 +283,7 @@ const Page = () => {
   };
 
   const confirmDelete = async () => {
+    // Confirm ke baad selected section delete hota hai aur table refresh hoti hai.
     const section = confirmSection;
     if (!section || isSaving) return;
     setConfirmSection(null);

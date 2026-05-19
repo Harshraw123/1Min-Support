@@ -97,6 +97,133 @@ This document summarizes real problems encountered while building the **embeddab
 
 ---
 
+## 7. Knowledge ingestion was compact for UI, but weak for retrieval
+
+**Symptom:** The dashboard needed compact knowledge content for humans, but retrieval needs richer full content. If we only store summaries, the chatbot can miss details from the original source.
+
+**Root cause:**
+
+- `summarizeMarkdown()` intentionally compresses raw upload / website / text content.
+- That summary is good for UI display, but it is not ideal as the only source for embeddings and future RAG.
+- Mixing summary and retrieval content would either bloat the UI or weaken search quality.
+
+**Fix:**
+
+- Kept `summarizeMarkdown(rawContent)` unchanged for existing behavior.
+- Added `cleanContent(rawContent)` as a separate AI step: remove HTML, scripts, nav, footer, ads, and cookie banners, but keep all meaningful content intact.
+- Store the summary in `knowledge.content` exactly as before.
+- Use cleaned markdown only for chunking and embeddings.
+
+**Interview line:** *“I separated human-facing compact summaries from retrieval-facing cleaned full content, so the UI stays simple while RAG keeps access to richer source material.”*
+
+---
+
+## 8. Full knowledge context does not scale for chat
+
+**Symptom / risk:** The chat path loaded entire selected knowledge documents into the model prompt. This works early, but becomes expensive and eventually hits context limits as customers add more sources.
+
+**Root cause:**
+
+- The old path injected `knowledge.content` directly into the system prompt.
+- There was no chunk table, no vector index, and no hybrid retrieval helper yet.
+- Replacing it all at once could break existing widget and dashboard chat behavior.
+
+**Fix:**
+
+- Added `knowledge_chunks` with `embedding vector(384)` using pgvector.
+- Added chunking with approximate token sizing, sentence-boundary preference, and overlap.
+- Added Hugging Face embeddings with `BAAI/bge-small-en-v1.5`, which returns 384-dimensional vectors.
+- Added a future retrieval helper that prepares vector search + `pg_trgm` keyword search + Reciprocal Rank Fusion.
+- Kept old full-context behavior active until retrieval quality is tested.
+
+**Interview line:** *“I built the scalable retrieval path behind the current behavior: pgvector chunks and hybrid-search preparation are ready, but the production chat flow remains stable until retrieval is validated.”*
+
+---
+
+## 9. Why I used pgvector instead of Pinecone / Weaviate / Qdrant
+
+**Problem / decision:** The app needs vector search for knowledge retrieval, but adding a separate vector database would increase infrastructure, cost, and sync complexity.
+
+**Context:**
+
+- The app already uses PostgreSQL through Drizzle.
+- Knowledge rows, workspace identity, sections, and billing data already live in Postgres.
+- Embeddings are tightly linked to `knowledge_id` and `workspace_id`.
+- A separate vector DB would require keeping Postgres rows and vector records in sync.
+
+**Solution:**
+
+- Used **pgvector inside PostgreSQL** instead of an external vector database.
+- Added `knowledge_chunks.embedding vector(384)`.
+- Used `vector(384)` because `BAAI/bge-small-en-v1.5` returns **384-dimensional embeddings**, not 1536.
+- Kept chunks and embeddings in the same database as knowledge and workspace data.
+- Added `pg_trgm` too, so future retrieval can combine vector similarity with keyword search.
+
+**What this means:**
+
+```txt
+Database: PostgreSQL / Neon
+Vector search: pgvector extension inside Postgres
+External vector DB: not used
+```
+
+**Why this is better for this stage:**
+
+- Simpler deployment.
+- No extra vendor to manage.
+- No duplicate data pipeline.
+- Easier workspace filtering with `workspace_id`.
+- Easier joins with `knowledge`, `sections`, and billing tables.
+- Good enough scalability for an MVP / early SaaS before introducing more infrastructure.
+
+**Interview line:** *“I didn’t add an external vector database. I used pgvector inside PostgreSQL, so embeddings stay in the same transactional database as knowledge and workspace data. It keeps infrastructure simpler and avoids syncing data between Postgres and a separate vector store.”*
+
+---
+
+## 10. Embedding failures could break ingestion
+
+**Symptom / risk:** If Hugging Face is unavailable, rate-limited, or returns an invalid embedding shape, a knowledge source upload could fail even though summarization and source storage succeeded.
+
+**Root cause:**
+
+- Embeddings are an external network dependency.
+- The embedding dimension must match `vector(384)`.
+- Treating embeddings as mandatory would make ingestion fragile.
+
+**Fix:**
+
+- Batch chunks in one Hugging Face request where possible.
+- Validate every embedding is exactly 384 dimensions.
+- Log `[EMBEDDING_ERROR]` and record a failed usage event when embedding fails.
+- Continue the main response and store the knowledge row, so users do not lose their source.
+
+**Interview line:** *“I made embeddings best-effort for Phase 1: strict validation and observability, but no user-facing ingestion failure when the external embedding provider has a problem.”*
+
+---
+
+## 11. No audit trail for usage-based billing
+
+**Symptom / risk:** The app could call Groq, Hugging Face, and internal ingestion flows, but there was no append-only billing record to answer: who used what, which section caused cost, and what should be billable.
+
+**Root cause:**
+
+- Token usage lived only inside individual API responses or logs.
+- There was no shared usage table, no plan/subscription schema, and no section-level usage tracking.
+- Billing enforcement added too early could accidentally block existing users.
+
+**Fix:**
+
+- Added `plans`, `workspace_subscriptions`, `usage_events`, and `usage_daily_rollups`.
+- Made `usage_events` the append-only source of truth.
+- Added `recordUsageEvent()` that never crashes the main user flow by default.
+- Added `checkUsageLimit()` and plan lookup helpers with enforcement disabled unless a caller explicitly enables it.
+- Recorded ingestion, cleaning, summarization, embedding, chunk storage, and chat completion usage.
+- Added `section_id` to billable AI calls when available for future section-wise analytics.
+
+**Interview line:** *“I designed billing as an observability layer first: append-only raw events, fast daily rollups later, and non-blocking enforcement hooks so we can turn quotas on safely.”*
+
+---
+
 ## Quick “stack” checklist for this feature
 
 | Area              | Pieces touched                                      |
@@ -108,6 +235,10 @@ This document summarizes real problems encountered while building the **embeddab
 | Dashboard parity  | `app/api/chat/test/route.ts` (refactor to shared) |
 | Theming           | `app/globals.css`, `next-themes`, widget `INIT`   |
 | Dev UX            | `next.config.ts` (`devIndicators`)               |
+| Chunking          | `lib/ai/chunkText.ts`, `knowledge_chunks`         |
+| Embeddings        | `lib/ai/embedChunks.ts`, Hugging Face bge-small   |
+| Usage / billing   | `usage_events`, `plans`, billing helper modules   |
+| Retrieval prep    | `lib/knowledge/retrieveRelevantChunks.ts`         |
 
 ---
 
