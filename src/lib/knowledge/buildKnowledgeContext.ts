@@ -1,6 +1,7 @@
 import { db } from "@/db/client";
 import { knowledge as knowledgeTable } from "@/db/schema";
 import { and, inArray, eq } from "drizzle-orm";
+import { isKnowledgeChunksReady } from "@/lib/db/knowledgeInfra";
 import { retrieveRelevantChunks } from "./retrieveRelevantChunks";
 
 const DEFAULT_MAX_CONTEXT_CHARS = 12_000;
@@ -62,7 +63,9 @@ export async function buildKnowledgeContextForChat(args: {
   const maxChars = args.maxChars ?? DEFAULT_MAX_CONTEXT_CHARS;
   const query = typeof args.query === "string" ? args.query.trim() : "";
 
-  if (query) {
+  const chunksReady = await isKnowledgeChunksReady();
+
+  if (query && chunksReady) {
     const chunks = await retrieveRelevantChunks({
       workspaceId: args.workspaceId,
       query,

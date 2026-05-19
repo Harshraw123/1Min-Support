@@ -17,6 +17,8 @@ import { getSession } from "@/lib/auth/getSession";
 import { deleteKnowledgeChunks } from "@/lib/knowledge/deleteKnowledgeChunks";
 import { recordUsageEvent } from "@/lib/billing/recordUsageEvent";
 import { checkUsageLimit } from "@/lib/billing/checkUsageLimit";
+import { isKnowledgeChunksReady } from "@/lib/db/knowledgeInfra";
+import { isMissingRelationError } from "@/lib/db/pgErrors";
 
 const MODEL_NAME = "llama-3.3-70b-versatile";
 
@@ -132,6 +134,24 @@ async function storeKnowledgeChunks(args: {
   );
 }
 
+function withChunkInfraMeta(
+  meta: Record<string, unknown> | null | undefined,
+  chunksReady: boolean
+): Record<string, unknown> {
+  const base =
+    meta && typeof meta === "object" && !Array.isArray(meta)
+      ? { ...meta }
+      : {};
+
+  if (chunksReady) return base;
+
+  return {
+    ...base,
+    chunksSkipped: true,
+    migrationHint: "Run npm run db:push to create knowledge_chunks and billing tables.",
+  };
+}
+
 async function saveKnowledgeWithChunks(args: {
   knowledgeValues: typeof knowledgeTable.$inferInsert;
   prepared: PreparedKnowledge;
@@ -139,15 +159,31 @@ async function saveKnowledgeWithChunks(args: {
   workspaceId: string;
   rawContent: string;
 }) {
-  const [inserted] = await db.insert(knowledgeTable).values(args.knowledgeValues).returning();
+  const chunksReady = await isKnowledgeChunksReady();
+  const knowledgeValues: typeof knowledgeTable.$inferInsert = {
+    ...args.knowledgeValues,
+    meta_data: withChunkInfraMeta(
+      args.knowledgeValues.meta_data as Record<string, unknown> | null | undefined,
+      chunksReady
+    ),
+  };
+
+  const [inserted] = await db.insert(knowledgeTable).values(knowledgeValues).returning();
 
   try {
-    await storeKnowledgeChunks({
-      knowledgeId: inserted.id,
-      workspaceId: args.workspaceId,
-      chunks: args.prepared.chunks,
-      embeddings: args.prepared.embeddings,
-    });
+    if (chunksReady && args.prepared.chunks.length > 0) {
+      await storeKnowledgeChunks({
+        knowledgeId: inserted.id,
+        workspaceId: args.workspaceId,
+        chunks: args.prepared.chunks,
+        embeddings: args.prepared.embeddings,
+      });
+    } else if (!chunksReady && args.prepared.chunks.length > 0) {
+      console.warn(
+        "[KNOWLEDGE_STORE] knowledge_chunks table missing — saved source without vector chunks. Run npm run db:push."
+      );
+    }
+
     await recordKnowledgeUsage({
       flow: args.flow,
       workspaceId: args.workspaceId,
@@ -157,9 +193,11 @@ async function saveKnowledgeWithChunks(args: {
     });
     return inserted;
   } catch (error) {
-    await deleteKnowledgeChunks(inserted.id).catch((cleanupError) => {
-      console.error("[CHUNK_CLEANUP_ERROR]", cleanupError);
-    });
+    if (chunksReady) {
+      await deleteKnowledgeChunks(inserted.id).catch((cleanupError) => {
+        console.error("[CHUNK_CLEANUP_ERROR]", cleanupError);
+      });
+    }
     await db.delete(knowledgeTable).where(eq(knowledgeTable.id, inserted.id));
     throw error;
   }
@@ -488,12 +526,22 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("[KNOWLEDGE_STORE_ERROR]", error);
 
+    if (isMissingRelationError(error)) {
+      return NextResponse.json(
+        {
+          message:
+            "Database schema is out of date. Run npm run db:push, then re-import this source.",
+        },
+        { status: 503 }
+      );
+    }
+
     const message = error instanceof Error ? error.message : "";
     if (message.includes("knowledge_chunks") || message.includes("vector")) {
       return NextResponse.json(
         {
           message:
-            "Knowledge was processed but chunk storage failed. Ensure database migrations are applied.",
+            "Knowledge was processed but chunk storage failed. Run npm run db:push and try again.",
         },
         { status: 503 }
       );

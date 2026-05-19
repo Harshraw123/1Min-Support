@@ -236,7 +236,7 @@ const EmbedContent = () => {
     <div className="h-full w-full flex items-end justify-end p-2 bg-transparent overflow-hidden text-foreground">
       {isOpen ? (
         <div
-          className="w-full h-full flex flex-col rounded-xl border border-border bg-card text-card-foreground shadow-2xl overflow-hidden ring-1 ring-black/6 dark:ring-white/10"
+          className="w-full h-full flex flex-col rounded-xl border border-border bg-card text-card-foreground  overflow-hidden ring-1 ring-black/6 dark:ring-white/10"
           style={{ animation: "embedZoomIn 200ms ease-out both" }}
         >
           <div

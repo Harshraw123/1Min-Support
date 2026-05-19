@@ -1,6 +1,7 @@
 import { db } from "@/db/client";
 import { usage_events } from "@/db/schema";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { isMissingRelationError } from "@/lib/db/pgErrors";
 import { getWorkspacePlan } from "./getWorkspacePlan";
 
 export type UsageLimitCheck = {
@@ -24,6 +25,18 @@ function toNumber(value: unknown): number {
   return 0;
 }
 
+const emptyUsage = {
+  aiMessages: 0,
+  ingestionTokens: 0,
+  embeddingTokens: 0,
+};
+
+const emptyLimits = {
+  aiMessages: null,
+  ingestionTokens: null,
+  embeddingTokens: null,
+};
+
 export async function checkUsageLimit(args: {
   workspace_id: string;
   enforce?: boolean;
@@ -33,27 +46,35 @@ export async function checkUsageLimit(args: {
   const periodStart = subscription?.current_period_start ?? new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = subscription?.current_period_end ?? now;
 
-  const [usage] = await db
-    .select({
-      aiMessages: sql<number>`coalesce(sum(${usage_events.message_count}) filter (where ${usage_events.event_type} in ('chat_completion','widget_message')), 0)`,
-      ingestionTokens: sql<number>`coalesce(sum(${usage_events.total_tokens}) filter (where ${usage_events.event_type} in ('knowledge_ingest','content_clean','content_summarize')), 0)`,
-      embeddingTokens: sql<number>`coalesce(sum(${usage_events.embedding_tokens}), 0)`,
-    })
-    .from(usage_events)
-    .where(
-      and(
-        eq(usage_events.workspace_id, args.workspace_id),
-        eq(usage_events.billable, true),
-        gte(usage_events.created_at, periodStart),
-        lte(usage_events.created_at, periodEnd)
-      )
-    );
+  let currentUsage = { ...emptyUsage };
 
-  const currentUsage = {
-    aiMessages: toNumber(usage?.aiMessages),
-    ingestionTokens: toNumber(usage?.ingestionTokens),
-    embeddingTokens: toNumber(usage?.embeddingTokens),
-  };
+  try {
+    const [usage] = await db
+      .select({
+        aiMessages: sql<number>`coalesce(sum(${usage_events.message_count}) filter (where ${usage_events.event_type} in ('chat_completion','widget_message')), 0)`,
+        ingestionTokens: sql<number>`coalesce(sum(${usage_events.total_tokens}) filter (where ${usage_events.event_type} in ('knowledge_ingest','content_clean','content_summarize')), 0)`,
+        embeddingTokens: sql<number>`coalesce(sum(${usage_events.embedding_tokens}), 0)`,
+      })
+      .from(usage_events)
+      .where(
+        and(
+          eq(usage_events.workspace_id, args.workspace_id),
+          eq(usage_events.billable, true),
+          gte(usage_events.created_at, periodStart),
+          lte(usage_events.created_at, periodEnd)
+        )
+      );
+
+    currentUsage = {
+      aiMessages: toNumber(usage?.aiMessages),
+      ingestionTokens: toNumber(usage?.ingestionTokens),
+      embeddingTokens: toNumber(usage?.embeddingTokens),
+    };
+  } catch (error) {
+    if (!isMissingRelationError(error)) {
+      throw error;
+    }
+  }
 
   const limits = {
     aiMessages: plan?.included_ai_messages ?? null,

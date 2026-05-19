@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:bootstrap": "node -e \"require('dotenv/config'); const { neon } = require('@neondatabase/serverless'); const sql = neon(process.env.DATABASE_URL); Promise.all([sql.query('CREATE EXTENSION IF NOT EXISTS vector', []), sql.query('CREATE EXTENSION IF NOT EXISTS pg_trgm', [])]).then(() => console.log('Database extensions ready')).catch((err) => { console.error(err); process.exit(1); });\"",
-    "db:push": "npm run db:bootstrap && drizzle-kit push"
+    "db:push": "npm run db:bootstrap && drizzle-kit push",
+    "db:migrate": "npm run db:bootstrap && drizzle-kit migrate"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

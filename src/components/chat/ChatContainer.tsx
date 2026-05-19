@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface ChatContainerProps {
   token: string;
@@ -13,7 +13,6 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 type ChatSection = { id: string; name: string };
 
 function normalizeColor(value?: string) {
-  // Widget ko invalid color se bachane ke liye safe hex fallback lagta hai.
   const color = value?.trim();
   return color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#2563eb";
 }
@@ -25,7 +24,6 @@ const ChatContainer = ({
   sections = [],
   activeSectionId,
 }: ChatContainerProps) => {
-  // Public embed chat token, theme aur selected section ke saath live conversation chalata hai.
   const accentColor = normalizeColor(color);
   const resolvedInitialMessage = initialMessage || "Hi there! How can I help you today?";
   const hasSections = sections.length > 0;
@@ -39,15 +37,21 @@ const ChatContainer = ({
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
+  // Ref attached to a sentinel div at the bottom of the message list.
+  // Scrolled into view whenever messages or isTyping changes.
+  const bottomRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    // Section ya welcome message change ho to widget fresh greeting se reset hota hai.
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  useEffect(() => {
     setMessages([{ role: "assistant", content: resolvedInitialMessage }]);
     setInput("");
     setIsTyping(false);
   }, [activeSectionId, resolvedInitialMessage]);
 
   const handleSend = async () => {
-    // Embed user message bearer token ke saath widget chat API ko send hota hai.
     if (!token.trim() || !input.trim() || isTyping || (hasSections && !activeSectionId)) return;
 
     const userMessage: ChatMessage = { role: "user", content: input.trim() };
@@ -154,6 +158,8 @@ const ChatContainer = ({
             </div>
           </div>
         )}
+        {/* Sentinel element — always stays at the bottom of the message list */}
+        <div ref={bottomRef} />
       </div>
 
       <div className="border-t border-border p-4 shrink-0">
