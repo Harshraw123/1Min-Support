@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/getSession";
 import { workspaceChatCompletion } from "@/lib/chat/workspaceChatCompletion";
 
 export async function POST(req: NextRequest) {
+  // Dashboard test chat logged-in workspace context me shared AI flow chalata hai.
   try {
     const user = await getSession();
     const userEmail = user?.email?.trim() || user?.user?.email?.trim();
@@ -34,6 +35,8 @@ export async function POST(req: NextRequest) {
       messages,
       section_id,
       knowledge_source_ids,
+      billable: false,
+      surface: "dashboard_test",
     });
 
     return NextResponse.json({

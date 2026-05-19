@@ -1,9 +1,11 @@
 import { db } from "@/db/client";
-import { knowledge as knowledgeTable, sections as sectionsTable } from "@/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { sections as sectionsTable } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import Groq from "groq-sdk";
 import type { ChatCompletionMessageParam } from "groq-sdk/resources/chat/completions";
 import { countConversationTokens } from "@/lib/ai/countConversionToken";
+import { recordUsageEvent } from "@/lib/billing/recordUsageEvent";
+import { buildKnowledgeContextForChat } from "@/lib/knowledge/buildKnowledgeContext";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -12,6 +14,7 @@ const groq = new Groq({
 const MODEL = "llama-3.3-70b-versatile";
 
 function formatContextValue(value: unknown): string {
+  // Section ke flexible fields prompt me readable text ban kar jate hain.
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value;
   if (Array.isArray(value)) {
@@ -28,6 +31,33 @@ function formatContextValue(value: unknown): string {
 
 export type ChatTurn = { role: string; content: string };
 
+export type WorkspaceChatCompletionResult = {
+  message: string;
+  tokensUsed: number;
+  usage: {
+    promptTokens: number | null;
+    completionTokens: number | null;
+    totalTokens: number | null;
+    model: string;
+    provider: "groq";
+  };
+  retrieval?: {
+    chunkIds: string[];
+    sectionId: string | null;
+    usedRag: boolean;
+  };
+};
+
+function lastUserMessage(messages: ChatTurn[]): string {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const turn = messages[i];
+    if (turn?.role === "user" && typeof turn.content === "string" && turn.content.trim()) {
+      return turn.content.trim();
+    }
+  }
+  return "";
+}
+
 /**
  * Shared Groq + RAG path for dashboard `/api/chat/test` and embed `/api/widget/chat`.
  */
@@ -36,7 +66,12 @@ export async function workspaceChatCompletion(args: {
   messages: ChatTurn[];
   section_id?: string | null;
   knowledge_source_ids?: string[];
-}): Promise<{ message: string; tokensUsed: number }> {
+  billable?: boolean;
+  surface?: "widget" | "dashboard_test" | "public" | "internal";
+  conversation_id?: string | null;
+  message_id?: string | null;
+}): Promise<WorkspaceChatCompletionResult> {
+  // Shared RAG flow section rules, knowledge context aur chat history ko Groq prompt me milata hai.
   const { workspaceId, section_id, knowledge_source_ids } = args;
   let { messages } = args;
 
@@ -49,12 +84,15 @@ export async function workspaceChatCompletion(args: {
   }
 
   let sectionContext = "";
+  let resolvedSectionId: string | null = null;
   let effectiveSourceIds: string[] = Array.isArray(knowledge_source_ids)
     ? knowledge_source_ids.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
     : [];
 
   if (typeof section_id === "string" && section_id.trim()) {
+    // Selected section se tone, scope aur linked source ids load hote hain.
     const sectionId = section_id.trim();
+    resolvedSectionId = sectionId;
 
     const [section] = await db
       .select()
@@ -99,25 +137,27 @@ export async function workspaceChatCompletion(args: {
     }
   }
 
-  let context = "";
-  if (effectiveSourceIds.length > 0) {
-    const sources = await db
-      .select({ content: knowledgeTable.content })
-      .from(knowledgeTable)
-      .where(
-        and(eq(knowledgeTable.workspace_id, workspaceId), inArray(knowledgeTable.id, effectiveSourceIds))
-      );
-
-    context = sources
-      .map((s) => s.content)
-      .filter(Boolean)
-      .join("\n\n");
-  }
-
   if (countConversationTokens(messages) > 6000) {
+    // Long chats me latest turns rakhe jate hain taaki token budget safe rahe.
     messages = messages.slice(-10);
   }
   const tokenCount = countConversationTokens(messages);
+
+  let context = "";
+  let retrievedChunkIds: string[] = [];
+  let usedRag = false;
+
+  if (effectiveSourceIds.length > 0) {
+    const knowledgeContext = await buildKnowledgeContextForChat({
+      workspaceId,
+      sourceIds: effectiveSourceIds,
+      query: lastUserMessage(messages),
+      billable: args.billable ?? false,
+    });
+    context = knowledgeContext.context;
+    retrievedChunkIds = knowledgeContext.chunkIds;
+    usedRag = knowledgeContext.usedRag;
+  }
 
   const systemPrompt = `Your name is Sarah. You are a friendly, helpful customer support agent.
 IDENTITY:
@@ -181,6 +221,7 @@ ${context ? `KNOWLEDGE:\n${context}` : ""}`;
     throw new Error("Invalid messages array");
   }
 
+  // Final model call strict context-only support answer generate karta hai.
   const response = await groq.chat.completions.create({
     model: MODEL,
     messages: [{ role: "system", content: systemPrompt }, ...completionMessages],
@@ -193,5 +234,44 @@ ${context ? `KNOWLEDGE:\n${context}` : ""}`;
     throw new Error("No response generated");
   }
 
-  return { message: aiResponse, tokensUsed: tokenCount };
+  const usage = {
+    promptTokens: response.usage?.prompt_tokens ?? null,
+    completionTokens: response.usage?.completion_tokens ?? null,
+    totalTokens: response.usage?.total_tokens ?? null,
+    model: MODEL,
+    provider: "groq" as const,
+  };
+
+  await recordUsageEvent({
+    workspace_id: workspaceId,
+    section_id: resolvedSectionId,
+    conversation_id: args.conversation_id ?? null,
+    message_id: args.message_id ?? null,
+    event_type: "chat_completion",
+    provider: "groq",
+    model: MODEL,
+    prompt_tokens: usage.promptTokens,
+    completion_tokens: usage.completionTokens,
+    total_tokens: usage.totalTokens,
+    message_count: 1,
+    metadata: {
+      surface: args.surface ?? "internal",
+      sourceIds: effectiveSourceIds,
+      estimatedConversationTokens: tokenCount,
+      usedRag,
+      chunkIds: retrievedChunkIds,
+    },
+    billable: args.billable ?? false,
+  });
+
+  return {
+    message: aiResponse,
+    tokensUsed: tokenCount,
+    usage,
+    retrieval: {
+      chunkIds: retrievedChunkIds,
+      sectionId: resolvedSectionId,
+      usedRag,
+    },
+  };
 }

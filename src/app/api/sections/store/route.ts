@@ -26,6 +26,7 @@ function normalizeOptionalText(value: unknown): string | null {
 }
 
 function normalizeSourceIds(value: unknown): string | null {
+  // UI se aaye source ids ko DB ke JSON-string format me normalize karte hain.
   if (value === null || value === undefined) return null;
   if (Array.isArray(value)) {
     const ids = value.filter((v) => typeof v === "string" && v.trim().length > 0);
@@ -48,6 +49,7 @@ function normalizeSourceIds(value: unknown): string | null {
 }
 
 async function requireSessionContext() {
+  // Har sections mutation workspace scoped rahe, isliye session context yahin enforce hota hai.
   const session = await getSession();
   const userEmail = session?.email?.trim() || session?.user?.email?.trim();
   const workspaceId =
@@ -74,6 +76,7 @@ async function requireSessionContext() {
 }
 
 export async function POST(req: NextRequest) {
+  // Naya section create karke usko current workspace se bind karte hain.
   try {
     const ctx = await requireSessionContext();
     if (!ctx.ok) return ctx.response;
@@ -119,6 +122,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  // Existing section ka sirf supplied fields patch hota hai.
   try {
     const ctx = await requireSessionContext();
     if (!ctx.ok) return ctx.response;
@@ -183,6 +187,7 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  // Delete bhi workspace scoped hai taaki dusre workspace ka section touch na ho.
   try {
     const ctx = await requireSessionContext();
     if (!ctx.ok) return ctx.response;

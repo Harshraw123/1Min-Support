@@ -2,8 +2,8 @@
 
 import { toast } from 'sonner'
 
-// General toast functions you can use anywhere
 export const showToast = {
+  // App-wide generic toast helpers Sonner calls ko centralize karte hain.
   success: (message: string) => {
     toast.success(message)
   },
@@ -21,8 +21,8 @@ export const showToast = {
   }
 }
 
-// Specific auth toasts
 export const authToast = {
+  // Auth flow ke common success/error messages yahan se reuse hote hain.
   loginSuccess: () => {
     toast.success('Successfully logged in! Welcome back.')
   },

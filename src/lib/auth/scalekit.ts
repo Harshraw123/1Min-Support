@@ -8,6 +8,7 @@ if (!environmentUrl || !clientId || !clientSecret) {
   throw new Error("Missing Scalekit environment variables");
 }
 
+// Shared Scalekit SDK client auth routes me login/callback ke liye use hota hai.
 export const scalekit: Scalekit = new Scalekit(
   environmentUrl,
   clientId,

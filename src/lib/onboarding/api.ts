@@ -4,9 +4,9 @@ export type InitialFormData = {
   externalLinks: string;
 };
 
-
-
+// Onboarding form ka data session user ke saath backend me save hota hai.
 export const submitMetadata = async (formData: InitialFormData) => {
+  // Pehle current logged-in user nikalte hain, phir usi email se metadata store hota hai.
   const sessionRes = await fetch("/api/auth/session");
   if (!sessionRes.ok) {
     throw new Error("Failed to read session");
@@ -19,6 +19,7 @@ export const submitMetadata = async (formData: InitialFormData) => {
     throw new Error("User not authenticated");
   }
 
+  // Business details metadata API ko bhejte hain taaki dashboard setup complete ho sake.
   const res = await fetch("/api/metadata/store", {
     method: "POST",
     headers: {

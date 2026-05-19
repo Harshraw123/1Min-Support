@@ -27,6 +27,7 @@ export function AIConfigSection({
   setFormData: SectionFormFieldsSharedProps["setFormData"];
   isDisabled?: SectionFormFieldsSharedProps["isDisabled"];
 }) {
+  // Section ke AI tone aur topic boundaries configure karne wala form block hai.
   return (
     <section className="space-y-4">
       <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -71,4 +72,3 @@ export function AIConfigSection({
     </section>
   );
 }
-

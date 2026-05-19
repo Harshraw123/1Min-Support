@@ -27,6 +27,7 @@ export interface ExtractedContent {
   // ─────────────────────────────────────────────────────────────
   
   function extractNextData(html: string): Record<string, unknown> | null {
+    // Next.js page state mil jaye to JSON parse karke return karta hai.
     try {
       const match = html.match(
         /<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i
@@ -43,6 +44,7 @@ export interface ExtractedContent {
   // ─────────────────────────────────────────────────────────────
   
   function extractApolloState(html: string): Record<string, unknown> | null {
+    // Apollo/GraphQL cache script se structured data nikalne ki koshish karta hai.
     try {
       const match = html.match(/window\.__APOLLO_STATE__\s*=\s*(\{[\s\S]*?\});<\/script>/);
       if (!match?.[1]) return null;
@@ -57,6 +59,7 @@ export interface ExtractedContent {
   // ─────────────────────────────────────────────────────────────
   
   function extractJsonLd(html: string): Record<string, unknown>[] {
+    // Schema.org JSON-LD blocks ko collect karke array shape me normalize karta hai.
     const results: Record<string, unknown>[] = [];
     const regex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   
@@ -82,6 +85,7 @@ export interface ExtractedContent {
   // ─────────────────────────────────────────────────────────────
   
   function extractCleanText(html: string): string {
+    // HTML noise hata kar readable page text fallback banata hai.
     let text = html;
   
     // Remove entire noise blocks
@@ -115,6 +119,7 @@ export interface ExtractedContent {
   // ─────────────────────────────────────────────────────────────
   
   function flattenJsonLd(blocks: Record<string, unknown>[]): string {
+    // Common schema types ko LLM-friendly plain text lines me flatten karta hai.
     const lines: string[] = [];
   
     for (const block of blocks) {
@@ -210,6 +215,7 @@ export interface ExtractedContent {
   // ─────────────────────────────────────────────────────────────
   
   function flattenNextData(obj: unknown, depth = 0): string {
+    // Nested app state se useful leaf values limited depth tak pull karta hai.
     if (depth > 5) return ""; // prevent infinite recursion
     if (!obj || typeof obj !== "object") return "";
   
@@ -236,6 +242,7 @@ export interface ExtractedContent {
   // ─────────────────────────────────────────────────────────────
   
   export function extractStructuredContent(html: string): ExtractedContent {
+    // Raw HTML ko structured context aur clean text dono formats me prepare karta hai.
     const jsonLd     = extractJsonLd(html);
     const nextData   = extractNextData(html);
     const apolloState = extractApolloState(html);

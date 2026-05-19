@@ -18,6 +18,7 @@ export const tabColorMap: Record<KnowledgeType, KnowledgeTabColor> = {
 
 // 🌐 URL helpers (moved here)
 export const validateUrl = (url: string) => {
+  // URL valid hai ya nahi check karta hai before API submit.
   try {
     new URL(url);
     return true;
@@ -27,6 +28,7 @@ export const validateUrl = (url: string) => {
 };
 
 export const normalizeUrl = (url: string) => {
+  // Duplicate checks stable rahe isliye URL ka trailing slash normalize hota hai.
   try {
     const u = new URL(url);
     return u.origin + u.pathname.replace(/\/$/, "");
@@ -40,6 +42,7 @@ export const isDuplicateSource = (
   url: string,
   existingSources: { source_url: string }[]
 ) => {
+  // Same website source dobara add na ho isliye normalized URL compare hota hai.
   const normalized = normalizeUrl(url);
 
   return existingSources.some(
@@ -49,6 +52,7 @@ export const isDuplicateSource = (
 
 // ❌ error handler
 export const getErrorMessage = (e: unknown) => {
+  // Unknown catch value ko user-friendly error text me convert karta hai.
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
   return "Failed to import source";
@@ -58,6 +62,7 @@ export const getErrorMessage = (e: unknown) => {
 export const importKnowledgeSource = async (
   data: KnowledgeSubmitPayload
 ) => {
+  // Website/text/upload payload ko correct knowledge API request me map karta hai.
   let response: Response | undefined;
 
   if (data.type === "website") {

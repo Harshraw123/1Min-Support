@@ -36,9 +36,10 @@ interface KnowledgeTableProps {
   sources: KnowledgeSourceRow[];
   isLoading: boolean;
   onOpenDetails?: (source: KnowledgeSourceRow) => void;
+  onDelete?: (source: KnowledgeSourceRow) => void | Promise<void>;
 }
 
-const KnowledgeTable = ({ sources, isLoading, onOpenDetails }: KnowledgeTableProps) => {
+const KnowledgeTable = ({ sources, isLoading, onOpenDetails, onDelete }: KnowledgeTableProps) => {
   return (
     <Card className="bg-card border-border shadow-sm rounded-2xl">
       <CardHeader className="pb-3">
@@ -170,6 +171,8 @@ const KnowledgeTable = ({ sources, isLoading, onOpenDetails }: KnowledgeTablePro
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 hover:text-destructive"
+                          onClick={() => void onDelete?.(source)}
+                          aria-label="Delete source"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

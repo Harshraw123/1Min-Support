@@ -14,6 +14,7 @@ export function BasicsSection({
   setFormData,
   isDisabled,
 }: Pick<SectionFormFieldsSharedProps, "formData" | "setFormData" | "isDisabled">) {
+  // Section ka naam aur purpose collect karne wala basic info block hai.
   return (
     <section className="space-y-4">
       <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">

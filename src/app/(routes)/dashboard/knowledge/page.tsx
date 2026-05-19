@@ -20,7 +20,7 @@ type KnowledgeRow = {
   created_at: string | null;
 };
 
-
+// Knowledge page sources list dikhata hai aur add-source modal ka flow control karta hai.
 const Page = () => {
   const [defaultTab, setDefaultTab] = useState<KnowledgeType>("website");
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -35,6 +35,7 @@ const Page = () => {
   };
 
   const fetchSources = async () => {
+    // Backend se latest knowledge sources laake table state sync hoti hai.
     setIsLoading(true);
     try {
       const res = await fetch("/api/knowledge/fetch", { method: "GET" });
@@ -54,8 +55,27 @@ const Page = () => {
   }, []);
 
   const handleKnowledgeSubmit = async () => {
-    // Modal already persists; refresh UI after successful submit.
+    // Modal save kar chuka hota hai, yahan sirf fresh list reload hoti hai.
     await fetchSources();
+  };
+
+  const handleDeleteSource = async (source: KnowledgeRow) => {
+    if (!window.confirm(`Delete "${source.title}"? This cannot be undone.`)) return;
+
+    const res = await fetch(`/api/knowledge/delete?id=${encodeURIComponent(source.id)}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { message?: string } | null;
+      throw new Error(body?.message || "Failed to delete source");
+    }
+
+    await fetchSources();
+    if (selectedSource?.id === source.id) {
+      setIsSourceSheetOpen(false);
+      setSelectedSource(null);
+    }
   };
 
   return (
@@ -87,6 +107,14 @@ const Page = () => {
           onOpenDetails={(source) => {
             setSelectedSource(source as KnowledgeRow);
             setIsSourceSheetOpen(true);
+          }}
+          onDelete={async (source) => {
+            try {
+              await handleDeleteSource(source as KnowledgeRow);
+            } catch (e) {
+              console.error(e);
+              window.alert(e instanceof Error ? e.message : "Failed to delete source");
+            }
           }}
         />
         

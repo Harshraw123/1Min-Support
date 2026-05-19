@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { jwtVerify } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 import { workspaceChatCompletion } from "@/lib/chat/workspaceChatCompletion";
+import { checkUsageLimit } from "@/lib/billing/checkUsageLimit";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,7 @@ const CORS_HEADERS = {
 };
 
 function withCors(response: NextResponse, origin?: string | null) {
+  // Widget external sites se call hota hai, isliye CORS headers response par attach hote hain.
   response.headers.set("Access-Control-Allow-Origin", origin || "*");
   response.headers.set("Vary", "Origin");
   return response;
@@ -25,6 +27,7 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
+  // Public widget chat JWT verify karke same workspace chat completion use karta hai.
   try {
     const auth = req.headers.get("authorization");
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -58,6 +61,11 @@ export async function POST(req: NextRequest) {
       return withCors(NextResponse.json({ error: "Invalid token payload" }, { status: 401 }));
     }
 
+    // TODO: flip enforce to true when widget chat quotas are enabled for plans.
+    await checkUsageLimit({ workspace_id: chatbotId, enforce: false }).catch((error) => {
+      console.error("[USAGE_LIMIT_CHECK_ERROR]", error);
+    });
+
     const { messages, knowledge_source_ids, section_id: bodySectionId } = body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -68,6 +76,7 @@ export async function POST(req: NextRequest) {
       typeof bodySectionId === "string" && bodySectionId.trim() ? bodySectionId.trim() : null;
 
     if (!sectionId) {
+      // Section na mile to latest section fallback banta hai.
       const [first] = await db
         .select({ id: sectionsTable.id })
         .from(sectionsTable)
@@ -83,6 +92,8 @@ export async function POST(req: NextRequest) {
       messages: messages as { role: string; content: string }[],
       section_id: sectionId,
       knowledge_source_ids: Array.isArray(knowledge_source_ids) ? knowledge_source_ids : undefined,
+      billable: true,
+      surface: "widget",
     });
 
     return withCors(

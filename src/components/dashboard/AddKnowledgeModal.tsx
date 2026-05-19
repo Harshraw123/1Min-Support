@@ -44,6 +44,7 @@ export default function AddKnowledgeModal({
   existingSources = [],
   defaultTab = "website",
 }: AddKnowledgeModalProps) {
+  // Modal website/text/upload input ko ek common knowledge import flow me convert karta hai.
   const [type, setType] = useState<KnowledgeType>(defaultTab);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -108,6 +109,7 @@ export default function AddKnowledgeModal({
   };
 
   const buildPayload = (): KnowledgeSubmitPayload | null => {
+    // Active tab ke hisaab se payload banta hai aur invalid input yahin block hota hai.
     if (type === "website") {
       if (!url.trim()) {
         setError("Please enter a URL");
@@ -172,6 +174,7 @@ export default function AddKnowledgeModal({
   };
 
   const handleSubmit = async () => {
+    // Final payload ko knowledge API tak bhejkar parent table refresh karwate hain.
     if (isSubmitting) return;
 
     const payload = buildPayload();
