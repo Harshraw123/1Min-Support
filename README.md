@@ -1,6 +1,6 @@
 # 1min Support
 
-An AI customer support SaaS with a dashboard-managed knowledge base, section-based chatbot behavior, and an embeddable website widget. The system supports knowledge ingestion from uploads, websites, and text, then prepares the content for scalable RAG using PostgreSQL + pgvector.
+An agentic AI customer support SaaS that transforms business knowledge into autonomous support agents. The platform ingests content from websites, files, and custom text sources, builds scalable vectorized knowledge pipelines with PostgreSQL + pgvector, and delivers context-aware conversational agents through an embeddable widget and centralized control dashboard.
 
 ## What It Does
 
