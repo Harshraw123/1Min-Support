@@ -223,19 +223,3 @@ npm run lint
 npm run db:bootstrap
 npm run db:push
 ```
-
-## Interview Highlights
-
-- Built a multi-tenant AI support SaaS with dashboard and public widget flows.
-- Separated dashboard session auth from public widget JWT auth.
-- Refactored chat into a shared AI completion path for dashboard and widget parity.
-- Designed ingestion for scalable RAG without changing existing API response shapes.
-- Used pgvector inside Postgres instead of adding an external vector database.
-- Split compact summaries from cleaned retrieval content.
-- Added usage event tracking as the foundation for usage-based billing.
-- Kept billing enforcement non-blocking until plan policy is ready.
-- Added section-level usage hooks for future cost analytics.
-
-## Strong Interview Line
-
-> I built a workspace-based AI customer support SaaS where dashboard users manage knowledge and sections, while public visitors chat through an embedded JWT-secured widget. For RAG, I used PostgreSQL with pgvector instead of an external vector database, so embeddings stay next to workspace and knowledge data. I also added usage-event tracking so the product is ready for usage-based billing without breaking existing user flows.
