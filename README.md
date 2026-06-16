@@ -1,6 +1,8 @@
 # 1min Support
 
-An agentic AI customer support SaaS that transforms business knowledge into autonomous support agents. The platform ingests content from websites, files, and custom text sources, builds scalable vectorized knowledge pipelines with PostgreSQL + pgvector, and delivers context-aware conversational agents through an embeddable widget and centralized control dashboard.
+
+
+
 
 ## What It Does
 
