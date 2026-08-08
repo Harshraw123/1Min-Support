@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
-import { findConversation, listMessages, stripEscalationMarkers } from "@/lib/conversations";
+import {
+  findConversation,
+  getConversationMode,
+  listMessages,
+  stripEscalationMarkers,
+} from "@/lib/conversations";
 import { normalizeConversationStatus } from "@/lib/conversations/types";
 
 const CORS_HEADERS = {
@@ -79,6 +84,7 @@ export async function GET(req: NextRequest) {
     }
 
     const msgs = await listMessages(conv.id);
+    const conversationMode = getConversationMode(conv);
 
     // Customers must not see internal system events (escalation reason codes, assignment notes).
     const publicMessages = msgs.filter(
@@ -91,7 +97,10 @@ export async function GET(req: NextRequest) {
           id: conv.id,
           status: normalizeConversationStatus(conv.status),
           handlingMode: conv.handling_mode,
-          escalated: conv.handling_mode === "HUMAN",
+          conversationMode,
+          escalated:
+            conversationMode === "ESCALATED_WAITING_FOR_HUMAN" ||
+            conversationMode === "HUMAN_ACTIVE",
           assignedAgentName: conv.assigned_agent_name,
           lastCustomerMessage: conv.last_customer_message,
         },

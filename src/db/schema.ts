@@ -140,34 +140,40 @@ export const sections = pgTable("sections", {
  * Real widget identity lives here (widget_id). No separate unused widgets/chatbots tables.
  * ================================
  */
-export const chat_bot_metadata = pgTable("chat_bot_metadata", {
-  id: text("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
+export const chat_bot_metadata = pgTable(
+  "chat_bot_metadata",
+  {
+    id: text("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
 
-  widget_id: text("widget_id")
-    .notNull()
-    .unique()
-    .default(sql`gen_random_uuid()`),
+    widget_id: text("widget_id")
+      .notNull()
+      .unique()
+      .default(sql`gen_random_uuid()`),
 
-  chatbot_id: text("chatbot_id").notNull(), // 🔥 relation
+    chatbot_id: text("chatbot_id").notNull(), // 🔥 relation
 
-  name: text("name"),
+    name: text("name"),
 
-  color: text("color").notNull().default("#4f39f6"),
-  welcome_message: text("welcome_message").default(
-    "Hi there, How can I help you today?"
-  ),
+    color: text("color").notNull().default("#4f39f6"),
+    welcome_message: text("welcome_message").default(
+      "Hi there, How can I help you today?"
+    ),
 
-  avatar_src: text("avatar_src"),
+    avatar_src: text("avatar_src"),
 
-  default_section_id: text("default_section_id"),
+    default_section_id: text("default_section_id"),
 
-  allowed_domain: text("allowed_domain"),
+    allowed_domain: text("allowed_domain"),
 
-  created_at: timestamp("created_at").defaultNow(),
-  updated_at: timestamp("updated_at").defaultNow(),
-});
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("chat_bot_metadata_chatbot_id_unique_idx").on(table.chatbot_id),
+  ]
+);
 
 /**
  * ================================

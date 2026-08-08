@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getConversationForOrg,
+  getConversationMode,
   listMessages,
   requireOrgSession,
   stripEscalationMarkers,
@@ -34,6 +35,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         id: conv.id,
         status: normalizeConversationStatus(conv.status),
         handlingMode: conv.handling_mode,
+        conversationMode: getConversationMode(conv),
         name: conv.name,
         visitorId: conv.visitor_id,
         lastCustomerMessage: conv.last_customer_message,

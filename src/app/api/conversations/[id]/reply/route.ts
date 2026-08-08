@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   appendMessage,
   getConversationForOrg,
+  getConversationMode,
   requireOrgSession,
   resolveOrgAgent,
   takeConversation,
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         .update(conversation)
         .set({
           handling_mode: "HUMAN",
-          status: conv.status === "resolved" ? "human_handling" : conv.status === "escalated" ? "human_handling" : conv.status,
+          status: "human_handling",
           resolved_at: null,
           resolved_by: null,
         })
@@ -99,6 +100,13 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         .returning();
       if (updated) conv = updated;
     }
+
+    console.log("[CONVERSATION_STATE]", {
+      conversationId: id,
+      event: "HUMAN_REPLY",
+      newMode: getConversationMode(conv),
+      agent: agent.email,
+    });
 
     const { message } = await appendMessage({
       conversationId: id,

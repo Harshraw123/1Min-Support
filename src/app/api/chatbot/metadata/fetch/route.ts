@@ -1,7 +1,7 @@
 import { db } from "@/db/client";
 import { chatBotMetadata } from "@/db/schema";
 import { getSession } from "@/lib/auth/getSession";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -19,7 +19,9 @@ export async function GET() {
     const [record] = await db
       .select()
       .from(chatBotMetadata)
-      .where(eq(chatBotMetadata.chatbot_id, workspaceId));
+      .where(eq(chatBotMetadata.chatbot_id, workspaceId))
+      .orderBy(asc(chatBotMetadata.created_at), asc(chatBotMetadata.id))
+      .limit(1);
 
     if (!record) {
       return NextResponse.json(

@@ -11,8 +11,12 @@ import {
 import {
   appendMessage,
   detectEscalation,
+  ensureUserFacingMessage,
   escalateConversation,
+  escalationWaitingAcknowledgement,
+  getConversationMode,
   getOrCreateConversation,
+  humanActiveStatusMessage,
   listMessages,
   offlineEscalationCustomerMessage,
   refreshConversationAiEligibility,
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
    * Public widget chat:
    * 1) Verify JWT → tenant (chatbotId / workspace)
    * 2) Persist/reuse conversation + customer message
-   * 3) If handling_mode=HUMAN → store only, no AI reply
+   * 3) If human-owned → store customer turn and return non-empty acknowledgement/status
    * 4) Else run shared RAG completion, re-check ownership before deliver
    * 5) Escalate into persistent queue when AI cannot resolve
    */
@@ -197,9 +201,11 @@ export async function POST(req: NextRequest) {
         return withCors(
           NextResponse.json({
             conversationId: conv.id,
-            message: stripEscalationMarkers(maybeAssistant.content),
+            message: ensureUserFacingMessage(maybeAssistant.content),
+            messageRole: "assistant",
             messageId: maybeAssistant.id,
             handlingMode: conv.handling_mode,
+            conversationMode: getConversationMode(conv),
             status: conv.status,
             escalated: conv.handling_mode === "HUMAN",
             aiResponded: true,
@@ -207,20 +213,80 @@ export async function POST(req: NextRequest) {
           origin
         );
       }
+
+      const retryEligibility = await refreshConversationAiEligibility(conv.id, workspaceId);
+      if (!retryEligibility.eligible) {
+        const mode = retryEligibility.mode;
+        const message = retryEligibility.needsAcknowledgement
+          ? escalationWaitingAcknowledgement(
+              "I've added your latest message to the conversation."
+            )
+          : humanActiveStatusMessage();
+        return withCors(
+          NextResponse.json({
+            conversationId: conv.id,
+            message,
+            messageRole: retryEligibility.needsAcknowledgement ? "assistant" : "system",
+            messageId: userMessage.id,
+            handlingMode: retryEligibility.conversation?.handling_mode ?? conv.handling_mode,
+            conversationMode: mode,
+            status: retryEligibility.conversation?.status ?? conv.status,
+            escalated: mode !== "AI_ACTIVE",
+            aiResponded: false,
+            waitingForAgent: mode === "ESCALATED_WAITING_FOR_HUMAN",
+            idempotentRetry: true,
+          }),
+          origin
+        );
+      }
     }
 
-    // Human owns the conversation → persist only; never auto-generate AI (no quota burn).
-    if (conv.handling_mode === "HUMAN") {
+    const initialEligibility = await refreshConversationAiEligibility(conv.id, workspaceId);
+
+    // Human owns the conversation → never auto-generate AI (no quota burn).
+    // Unassigned escalations still receive a persisted customer-facing acknowledgement.
+    if (!initialEligibility.eligible) {
+      const mode = initialEligibility.mode;
+      if (initialEligibility.needsAcknowledgement) {
+        const acknowledgement = escalationWaitingAcknowledgement(
+          "I've added your latest message to the conversation."
+        );
+        const { message: assistantMsg } = await appendMessage({
+          conversationId: conv.id,
+          role: "assistant",
+          content: acknowledgement,
+          metadata: { type: "escalation_waiting_acknowledgement" },
+        });
+        return withCors(
+          NextResponse.json({
+            conversationId: conv.id,
+            message: ensureUserFacingMessage(assistantMsg.content, acknowledgement),
+            messageRole: "assistant",
+            messageId: assistantMsg.id,
+            handlingMode: initialEligibility.conversation?.handling_mode ?? "HUMAN",
+            conversationMode: mode,
+            status: initialEligibility.conversation?.status ?? conv.status,
+            escalated: true,
+            aiResponded: false,
+            waitingForAgent: true,
+          }),
+          origin
+        );
+      }
+
+      const statusMessage = humanActiveStatusMessage();
       return withCors(
         NextResponse.json({
           conversationId: conv.id,
-          message: null,
+          message: statusMessage,
+          messageRole: "system",
           messageId: userMessage.id,
-          handlingMode: "HUMAN",
-          status: conv.status,
-          escalated: true,
+          handlingMode: initialEligibility.conversation?.handling_mode ?? "HUMAN",
+          conversationMode: mode,
+          status: initialEligibility.conversation?.status ?? conv.status,
+          escalated: mode !== "AI_ACTIVE",
           aiResponded: false,
-          waitingForAgent: true,
+          waitingForAgent: mode === "ESCALATED_WAITING_FOR_HUMAN",
         }),
         origin
       );
@@ -252,6 +318,7 @@ export async function POST(req: NextRequest) {
           message: assistantMsg.content,
           messageId: assistantMsg.id,
           handlingMode: "AI",
+          conversationMode: "AI_ACTIVE",
           status: conv.status,
           escalated: false,
           aiResponded: true,
@@ -311,6 +378,7 @@ export async function POST(req: NextRequest) {
           message: stripEscalationMarkers(assistantMsg.content),
           messageId: assistantMsg.id,
           handlingMode: "HUMAN",
+          conversationMode: "ESCALATED_WAITING_FOR_HUMAN",
           status: "escalated",
           escalated: true,
           aiResponded: true,
@@ -323,16 +391,48 @@ export async function POST(req: NextRequest) {
     // Race: agent may have taken ownership while the model was generating.
     const eligibility = await refreshConversationAiEligibility(conv.id, workspaceId);
     if (!eligibility.eligible) {
+      const mode = eligibility.mode;
+      if (eligibility.needsAcknowledgement) {
+        const acknowledgement = escalationWaitingAcknowledgement(
+          "I've added your latest message to the conversation."
+        );
+        const { message: assistantMsg } = await appendMessage({
+          conversationId: conv.id,
+          role: "assistant",
+          content: acknowledgement,
+          metadata: { type: "escalation_waiting_acknowledgement", discardedAiResponse: true },
+        });
+        return withCors(
+          NextResponse.json({
+            conversationId: conv.id,
+            message: ensureUserFacingMessage(assistantMsg.content, acknowledgement),
+            messageRole: "assistant",
+            messageId: assistantMsg.id,
+            handlingMode: eligibility.conversation?.handling_mode ?? "HUMAN",
+            conversationMode: mode,
+            status: eligibility.conversation?.status ?? "escalated",
+            escalated: true,
+            aiResponded: false,
+            waitingForAgent: true,
+            discardedAiResponse: true,
+          }),
+          origin
+        );
+      }
+
+      const statusMessage = humanActiveStatusMessage();
       return withCors(
         NextResponse.json({
           conversationId: conv.id,
-          message: null,
+          message: statusMessage,
+          messageRole: "system",
           messageId: userMessage.id,
           handlingMode: eligibility.conversation?.handling_mode ?? "HUMAN",
+          conversationMode: mode,
           status: eligibility.conversation?.status ?? "human_handling",
-          escalated: true,
+          escalated: mode !== "AI_ACTIVE",
           aiResponded: false,
-          waitingForAgent: true,
+          waitingForAgent: mode === "ESCALATED_WAITING_FOR_HUMAN",
           discardedAiResponse: true,
         }),
         origin
@@ -348,10 +448,14 @@ export async function POST(req: NextRequest) {
     });
 
     // Defense in depth: never persist/return [[ESCALATE|...]] to customers.
-    let customerFacing = stripEscalationMarkers(signal.customerMessage);
+    let customerFacing = ensureUserFacingMessage(
+      signal.customerMessage,
+      "I couldn't generate a complete answer, but I've saved your message."
+    );
     let escalated = false;
     let status = eligibility.conversation?.status ?? conv.status;
     let handlingMode = eligibility.conversation?.handling_mode ?? "AI";
+    let conversationMode = getConversationMode(eligibility.conversation ?? conv);
 
     if (signal.shouldEscalate) {
       const escalatedRow = await escalateConversation({
@@ -366,12 +470,13 @@ export async function POST(req: NextRequest) {
       escalated = true;
       status = escalatedRow.status;
       handlingMode = escalatedRow.handling_mode;
+      conversationMode = getConversationMode(escalatedRow);
     }
 
     const { message: assistantMsg } = await appendMessage({
       conversationId: conv.id,
       role: "assistant",
-      content: customerFacing,
+      content: ensureUserFacingMessage(customerFacing),
       metadata: {
         usedRag: result.retrieval?.usedRag ?? false,
         escalated,
@@ -387,9 +492,11 @@ export async function POST(req: NextRequest) {
     return withCors(
       NextResponse.json({
         conversationId: conv.id,
-        message: stripEscalationMarkers(assistantMsg.content),
+        message: ensureUserFacingMessage(assistantMsg.content),
+        messageRole: "assistant",
         messageId: assistantMsg.id,
         handlingMode,
+        conversationMode,
         status,
         escalated,
         aiResponded: true,

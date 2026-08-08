@@ -8,11 +8,58 @@ import type {
   HandlingMode,
   MessageRole,
 } from "./types";
-import { isAiEligible, normalizeConversationStatus } from "./types";
+import {
+  getConversationMode,
+  needsEscalationAcknowledgement,
+  shouldAIRespond,
+} from "./types";
 import { stripEscalationMarkers } from "./escalation";
 
 export type ConversationRow = typeof conversation.$inferSelect;
 export type MessageRow = typeof messages.$inferSelect;
+
+const ESCALATED_WAITING_MESSAGE =
+  "Your request has been escalated to our support team. You can continue adding details here, and our team will review them.";
+
+const HUMAN_ACTIVE_STATUS_MESSAGE =
+  "Your conversation is being handled by our support team. Your message has been added here for the agent to review.";
+
+const AI_FALLBACK_MESSAGE =
+  "I'm having trouble answering right now. Please try again in a moment.";
+
+function logConversationTransition(args: {
+  conversationId: string;
+  event: string;
+  previousMode?: string;
+  newMode?: string;
+  agent?: string | null;
+}) {
+  console.log("[CONVERSATION_STATE]", {
+    conversationId: args.conversationId,
+    event: args.event,
+    previousMode: args.previousMode,
+    newMode: args.newMode,
+    agent: args.agent ?? undefined,
+  });
+}
+
+export function ensureUserFacingMessage(
+  value: string | null | undefined,
+  fallback = AI_FALLBACK_MESSAGE
+): string {
+  const cleaned = stripEscalationMarkers(value ?? "").trim();
+  return cleaned || fallback;
+}
+
+export function escalationWaitingAcknowledgement(extra?: string | null): string {
+  const cleaned = stripEscalationMarkers(extra ?? "").trim();
+  if (!cleaned) return ESCALATED_WAITING_MESSAGE;
+  return `${ESCALATED_WAITING_MESSAGE} ${cleaned}`;
+}
+
+export function humanActiveStatusMessage(): string {
+  return HUMAN_ACTIVE_STATUS_MESSAGE;
+}
 
 /**
  * Look up an existing conversation without creating one (used for widget resume).
@@ -189,7 +236,7 @@ export async function appendMessage(args: {
   const content =
     args.role === "assistant"
       ? stripEscalationMarkers(args.content).trim() ||
-        "I've forwarded your request to our support team. An agent will respond as soon as they're available."
+        ESCALATED_WAITING_MESSAGE
       : args.content.trim();
   if (!content) {
     throw new Error("Message content is required");
@@ -301,6 +348,7 @@ export async function escalateConversation(args: {
 
   const alreadyHuman = current.handling_mode === "HUMAN";
   const alreadyAssigned = Boolean(current.assigned_agent_email);
+  const previousMode = getConversationMode(current);
 
   const nextStatus = alreadyAssigned ? "human_handling" : "escalated";
   const priority =
@@ -346,6 +394,13 @@ export async function escalateConversation(args: {
       },
     });
   }
+
+  logConversationTransition({
+    conversationId: args.conversationId,
+    event: "ESCALATION_REQUESTED",
+    previousMode,
+    newMode: getConversationMode(updated ?? current),
+  });
 
   return updated ?? current;
 }
@@ -397,6 +452,13 @@ export async function takeConversation(args: {
       senderName: args.agentName,
       metadata: { type: "assignment", agentEmail: email },
     });
+    logConversationTransition({
+      conversationId: args.conversationId,
+      event: "HUMAN_TAKEOVER",
+      previousMode: "ESCALATED_WAITING_FOR_HUMAN",
+      newMode: getConversationMode(claimed[0]),
+      agent: email,
+    });
     return { ok: true, conversation: claimed[0] };
   }
 
@@ -416,6 +478,7 @@ export async function takeConversation(args: {
   }
 
   if (current.assigned_agent_email?.toLowerCase() === email) {
+    const previousMode = getConversationMode(current);
     const [refreshed] = await db
       .update(conversation)
       .set({
@@ -426,6 +489,13 @@ export async function takeConversation(args: {
       })
       .where(eq(conversation.id, current.id))
       .returning();
+    logConversationTransition({
+      conversationId: args.conversationId,
+      event: "HUMAN_TAKEOVER_REFRESHED",
+      previousMode,
+      newMode: getConversationMode(refreshed ?? current),
+      agent: email,
+    });
     return { ok: true, conversation: refreshed ?? current };
   }
 
@@ -450,6 +520,16 @@ export async function assignConversation(args: {
 }): Promise<ConversationRow | null> {
   const email = args.agentEmail.trim().toLowerCase();
   const now = new Date();
+  const [current] = await db
+    .select()
+    .from(conversation)
+    .where(
+      and(
+        eq(conversation.id, args.conversationId),
+        eq(conversation.workspace_id, args.workspaceId)
+      )
+    )
+    .limit(1);
 
   const [updated] = await db
     .update(conversation)
@@ -486,6 +566,14 @@ export async function assignConversation(args: {
     },
   });
 
+  logConversationTransition({
+    conversationId: args.conversationId,
+    event: "HUMAN_ASSIGNED",
+    previousMode: getConversationMode(current),
+    newMode: getConversationMode(updated),
+    agent: email,
+  });
+
   return updated;
 }
 
@@ -495,10 +583,26 @@ export async function resolveConversation(args: {
   resolvedBy: string;
 }): Promise<ConversationRow | null> {
   const now = new Date();
+  const [current] = await db
+    .select()
+    .from(conversation)
+    .where(
+      and(
+        eq(conversation.id, args.conversationId),
+        eq(conversation.workspace_id, args.workspaceId)
+      )
+    )
+    .limit(1);
+
   const [updated] = await db
     .update(conversation)
     .set({
       status: "resolved",
+      handling_mode: "AI",
+      assigned_agent_id: null,
+      assigned_agent_email: null,
+      assigned_agent_name: null,
+      assigned_at: null,
       resolved_at: now,
       resolved_by: args.resolvedBy,
       last_message_at: now,
@@ -521,11 +625,19 @@ export async function resolveConversation(args: {
     metadata: { type: "resolve" },
   });
 
+  logConversationTransition({
+    conversationId: args.conversationId,
+    event: "HUMAN_HANDOFF_RESOLVED",
+    previousMode: getConversationMode(current),
+    newMode: getConversationMode(updated),
+    agent: args.resolvedBy,
+  });
+
   return updated;
 }
 
 /**
- * Reopen a resolved conversation. Defaults back to AI unless a human still owns it.
+ * Reopen a resolved conversation. Defaults back to AI; pass preferHuman for agent-led reopen.
  */
 export async function reopenConversation(args: {
   conversationId: string;
@@ -546,9 +658,7 @@ export async function reopenConversation(args: {
 
   if (!current) return null;
 
-  const keepHuman =
-    args.preferHuman ||
-    (current.handling_mode === "HUMAN" && Boolean(current.assigned_agent_email));
+  const keepHuman = args.preferHuman === true;
 
   const nextStatus = keepHuman
     ? current.assigned_agent_email
@@ -587,6 +697,14 @@ export async function reopenConversation(args: {
     metadata: { type: "reopen", handlingMode: nextMode },
   });
 
+  logConversationTransition({
+    conversationId: args.conversationId,
+    event: keepHuman ? "CONVERSATION_REOPENED_HUMAN" : "CONVERSATION_REOPENED_AI",
+    previousMode: getConversationMode(current),
+    newMode: getConversationMode(updated ?? current),
+    agent: args.reopenedBy,
+  });
+
   return updated ?? current;
 }
 
@@ -597,7 +715,12 @@ export async function reopenConversation(args: {
 export async function refreshConversationAiEligibility(
   conversationId: string,
   workspaceId: string
-): Promise<{ eligible: boolean; conversation: ConversationRow | null }> {
+): Promise<{
+  eligible: boolean;
+  conversation: ConversationRow | null;
+  mode: ReturnType<typeof getConversationMode>;
+  needsAcknowledgement: boolean;
+}> {
   const [row] = await db
     .select()
     .from(conversation)
@@ -606,11 +729,27 @@ export async function refreshConversationAiEligibility(
     )
     .limit(1);
 
-  if (!row) return { eligible: false, conversation: null };
-  if (normalizeConversationStatus(row.status) === "resolved") {
-    return { eligible: false, conversation: row };
+  if (!row) {
+    return {
+      eligible: false,
+      conversation: null,
+      mode: "RESOLVED",
+      needsAcknowledgement: false,
+    };
   }
-  return { eligible: isAiEligible(row.handling_mode), conversation: row };
+  const mode = getConversationMode(row);
+  const eligible = shouldAIRespond(row);
+  console.log("[CONVERSATION_AI_ELIGIBILITY]", {
+    conversationId,
+    mode,
+    aiResponseAllowed: eligible,
+  });
+  return {
+    eligible,
+    conversation: row,
+    mode,
+    needsAcknowledgement: needsEscalationAcknowledgement(row),
+  };
 }
 
 export async function listConversationsForWorkspace(args: {

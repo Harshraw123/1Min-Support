@@ -27,6 +27,18 @@ export type MessageRole = "user" | "assistant" | "agent" | "system";
 
 export type ConversationPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 
+export type ConversationMode =
+  | "AI_ACTIVE"
+  | "ESCALATED_WAITING_FOR_HUMAN"
+  | "HUMAN_ACTIVE"
+  | "RESOLVED";
+
+export type ConversationStateLike = {
+  status?: string | null;
+  handling_mode?: string | null;
+  assigned_agent_email?: string | null;
+};
+
 export type ConversationListFilter =
   | "all"
   | "active"
@@ -61,4 +73,33 @@ export function normalizeConversationStatus(
 export function isAiEligible(handlingMode: string | null | undefined): boolean {
   // Only AI mode may auto-generate replies. HUMAN mode = persist customer messages and wait.
   return (handlingMode ?? "AI") === "AI";
+}
+
+export function getConversationMode(
+  conversation: ConversationStateLike | null | undefined
+): ConversationMode {
+  if (!conversation) return "RESOLVED";
+
+  const status = normalizeConversationStatus(conversation.status);
+  if (status === "resolved") return "RESOLVED";
+
+  if ((conversation.handling_mode ?? "AI") === "HUMAN") {
+    return conversation.assigned_agent_email?.trim()
+      ? "HUMAN_ACTIVE"
+      : "ESCALATED_WAITING_FOR_HUMAN";
+  }
+
+  return "AI_ACTIVE";
+}
+
+export function shouldAIRespond(
+  conversation: ConversationStateLike | null | undefined
+): boolean {
+  return getConversationMode(conversation) === "AI_ACTIVE";
+}
+
+export function needsEscalationAcknowledgement(
+  conversation: ConversationStateLike | null | undefined
+): boolean {
+  return getConversationMode(conversation) === "ESCALATED_WAITING_FOR_HUMAN";
 }

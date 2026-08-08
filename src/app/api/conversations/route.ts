@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   countOpenEscalated,
+  getConversationMode,
   listConversationsForWorkspace,
   requireOrgSession,
 } from "@/lib/conversations";
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
         id: c.id,
         status: normalizeConversationStatus(c.status),
         handlingMode: c.handling_mode,
+        conversationMode: getConversationMode(c),
         name: c.name,
         visitorId: c.visitor_id,
         lastCustomerMessage: c.last_customer_message,

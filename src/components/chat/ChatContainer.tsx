@@ -208,9 +208,10 @@ const ChatContainer = ({
             }))
           );
         }
-        if (data.conversation?.handlingMode === "HUMAN") {
-          setHandlingMode("HUMAN");
-          setWaitingForAgent(true);
+        if (data.conversation) {
+          const nextMode = data.conversation.handlingMode === "HUMAN" ? "HUMAN" : "AI";
+          setHandlingMode(nextMode);
+          setWaitingForAgent(Boolean(data.conversation.escalated));
         }
       } catch {
         // Ignore transient poll errors.
@@ -281,6 +282,7 @@ const ChatContainer = ({
         waitingForAgent?: boolean;
         aiResponded?: boolean;
         escalated?: boolean;
+        messageRole?: ChatMessage["role"];
       };
 
       if (!response.ok) {
@@ -301,12 +303,23 @@ const ChatContainer = ({
       setWaitingForAgent(Boolean(data.waitingForAgent || data.escalated));
 
       if (typeof data.message === "string" && data.message.trim()) {
+        const messageRole =
+          data.messageRole === "system" ||
+          data.messageRole === "agent" ||
+          data.messageRole === "user"
+            ? data.messageRole
+            : "assistant";
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: sanitizeAssistantContent(data.message!.trim()) },
+          {
+            role: messageRole,
+            content:
+              messageRole === "assistant"
+                ? sanitizeAssistantContent(data.message!.trim())
+                : data.message!.trim(),
+          },
         ]);
       }
-      // Human-owned turns intentionally have no AI reply; banner covers waiting state.
     } catch (e) {
       console.error("[embed chat]", e);
       setMessages((prev) => [

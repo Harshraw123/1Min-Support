@@ -36,6 +36,13 @@
       "when": 1779300000000,
       "tag": "0004_simple_lemon_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779400000000,
+      "tag": "0005_stable_chatbot_embed_uid",
+      "breakpoints": true
     }
   ]
 }
