@@ -106,6 +106,7 @@ const EmbedContent = () => {
   const searchParams = useSearchParams();
   const { setTheme } = useTheme();
   const widgetId = readString(searchParams.get("widgetId")) ?? readString(searchParams.get("token"));
+  // Prefer postMessage token; URL sessionToken is legacy and should be avoided (Referer leak).
   const sessionToken = readString(searchParams.get("sessionToken"));
   const themeFromUrl = parseUiTheme(readString(searchParams.get("theme")));
 
@@ -113,7 +114,8 @@ const EmbedContent = () => {
   const [config, setConfig] = useState<WidgetConfig>(DEFAULT_CONFIG);
   const [sections, setSections] = useState<WidgetSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const [chatToken, setChatToken] = useState(sessionToken ?? widgetId ?? "");
+  // Start empty when only widgetId is present — wait for INIT postMessage with JWT.
+  const [chatToken, setChatToken] = useState(sessionToken ?? "");
   const [loading, setLoading] = useState(!widgetId && !sessionToken);
   const [error, setError] = useState(false);
 
@@ -127,7 +129,8 @@ const EmbedContent = () => {
   //    • Always send the initial bubble resize, even on failure
   // -------------------------------------------------------------------------
   useEffect(() => {
-    setChatToken(sessionToken ?? widgetId ?? "");
+    // Legacy URL token only — never treat public widgetId as a session JWT.
+    if (sessionToken) setChatToken(sessionToken);
 
     const handleInitMessage = (event: MessageEvent) => {
       if (event.source !== window.parent) return;
@@ -149,18 +152,30 @@ const EmbedContent = () => {
 
     let cancelled = false;
     const timeout = window.setTimeout(() => {
-      if (cancelled || widgetId || sessionToken) return;
-      setLoading(false);
-      setError(true);
-      sendResize(BUBBLE_SIZE.width, BUBBLE_SIZE.height);
-    }, 4000);
+      if (cancelled) return;
+      // Still waiting for INIT with a JWT — fail closed instead of hanging forever.
+      setLoading((prev) => {
+        // If loading is already false, INIT arrived.
+        return prev;
+      });
+      setChatToken((current) => {
+        if (current) {
+          setLoading(false);
+          return current;
+        }
+        setLoading(false);
+        setError(true);
+        sendResize(BUBBLE_SIZE.width, BUBBLE_SIZE.height);
+        return current;
+      });
+    }, 5000);
 
     return () => {
       cancelled = true;
       window.clearTimeout(timeout);
       window.removeEventListener("message", handleInitMessage);
     };
-  }, [sessionToken, widgetId, setTheme]);
+  }, [sessionToken, setTheme]);
 
   useEffect(() => {
     if (!widgetId) {
@@ -296,6 +311,7 @@ const EmbedContent = () => {
               color={primaryColor}
               sections={sections}
               activeSectionId={activeSectionId}
+              widgetId={widgetId}
             />
           </div>
         </div>

@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import TeamSection from "@/components/dashboard/TeamSection";
+import BillingSection from "@/components/dashboard/BillingSection";
 
 type Organization = {
   id: string | null;
@@ -90,9 +91,11 @@ const SettingPage = () => {
           Settings
         </h1>
         <p className="text-sm text-muted-foreground">
-          Workspace details and team access.
+          Workspace details, billing, and team access.
         </p>
       </div>
+
+      <BillingSection />
 
       <Card className="glass overflow-hidden rounded-2xl border-border/60 shadow-sm">
         <CardHeader className="border-b border-border/40  px-5 py-5 sm:px-6">

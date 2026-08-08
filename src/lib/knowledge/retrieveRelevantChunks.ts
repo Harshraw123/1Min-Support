@@ -1,8 +1,7 @@
 import { db } from "@/db/client";
 import { sql } from "drizzle-orm";
-import { embedChunks, HF_EMBEDDING_MODEL } from "@/lib/ai/embedChunks";
+import { embedChunks } from "@/lib/ai/embedChunks";
 import { approximateTokenCount } from "@/lib/ai/chunkText";
-import { recordUsageEvent } from "@/lib/billing/recordUsageEvent";
 
 export type RetrievedChunk = {
   id: string;
@@ -132,8 +131,6 @@ export async function retrieveRelevantChunks(args: {
   query: string;
   knowledgeSourceIds?: string[];
   topK?: number;
-  recordUsage?: boolean;
-  billable?: boolean;
 }): Promise<RetrievedChunk[]> {
   const query = typeof args.query === "string" ? args.query.trim() : "";
   if (!query) return [];
@@ -175,23 +172,6 @@ export async function retrieveRelevantChunks(args: {
 
   const chunks = reciprocalRankFusion(vectorRows, keywordRows).slice(0, topK);
 
-  if (args.recordUsage) {
-    await recordUsageEvent({
-      workspace_id: args.workspaceId,
-      event_type: "retrieval_query",
-      provider: "huggingface",
-      model: HF_EMBEDDING_MODEL,
-      embedding_tokens: approximateTokenCount(query),
-      chunk_count: chunks.length,
-      metadata: {
-        topK,
-        sourceIds,
-        vectorHits: vectorRows.length,
-        keywordHits: keywordRows.length,
-      },
-      billable: args.billable ?? false,
-    });
-  }
 
   return chunks;
 }

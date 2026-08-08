@@ -1,13 +1,13 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
-  date,
   index,
   integer,
   jsonb,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   vector,
 } from "drizzle-orm/pg-core";
 
@@ -136,25 +136,8 @@ export const sections = pgTable("sections", {
 
 /**
  * ================================
- * CHATBOTS
- * ================================
- */
-export const chatbots = pgTable("chatbots", {
-  id: text("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-
-  name: text("name").notNull(),
-  website_url: text("website_url").notNull(),
-
-  workspace_id: text("workspace_id").notNull(),
-
-  created_at: timestamp("created_at").defaultNow(),
-});
-
-/**
- * ================================
  * CHATBOT UI CONFIG (WIDGET)
+ * Real widget identity lives here (widget_id). No separate unused widgets/chatbots tables.
  * ================================
  */
 export const chat_bot_metadata = pgTable("chat_bot_metadata", {
@@ -207,6 +190,15 @@ export const team_members = pgTable("team_members", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
+/**
+ * Customer support conversations.
+ * workspace_id === organization_id (tenant). chatbot_id is the bot for that workspace
+ * (today both are the Scalekit org id — keep both so we can split later without rewrite).
+ *
+ * Lifecycle (handling_mode owns AI vs human; status is the queue/lifecycle label):
+ *   ai_active → escalated (unassigned queue) → human_handling → resolved
+ * Customer messages after resolve reopen to ai_active unless an agent still owns it.
+ */
 export const conversation = pgTable(
   "conversation",
   {
@@ -215,32 +207,76 @@ export const conversation = pgTable(
       .default(sql`gen_random_uuid()`),
 
     chatbot_id: text("chatbot_id").notNull(),
+    workspace_id: text("workspace_id").notNull(),
+
+    /** Stable browser visitor id (localStorage) — survives refresh better than JWT sessionId. */
+    visitor_id: text("visitor_id"),
+    /** JWT sessionId from /api/widget/session (rotates every 2h). */
+    widget_session_id: text("widget_session_id"),
 
     user_email: text("user_email"),
-
     visitor_ip: text("visitor_ip"),
-
     name: text("name"),
 
     status: text("status", {
-      enum: ["active", "closed"],
-    }).default("active"),
+      enum: ["ai_active", "escalated", "human_handling", "resolved", "active", "closed"],
+    })
+      .notNull()
+      .default("ai_active"),
 
-    last_message_at: timestamp("last_message_at")
-      .defaultNow(),
+    /** Who is allowed to auto-reply: AI or HUMAN. Human takeover always sets HUMAN. */
+    handling_mode: text("handling_mode", {
+      enum: ["AI", "HUMAN"],
+    })
+      .notNull()
+      .default("AI"),
 
-    created_at: timestamp("created_at")
-      .defaultNow(),
+    assigned_agent_id: text("assigned_agent_id"),
+    assigned_agent_email: text("assigned_agent_email"),
+    assigned_agent_name: text("assigned_agent_name"),
+    assigned_at: timestamp("assigned_at"),
+
+    escalation_reason: text("escalation_reason"),
+    escalation_summary: text("escalation_summary"),
+    escalated_at: timestamp("escalated_at"),
+    escalated_by: text("escalated_by"),
+
+    priority: text("priority", {
+      enum: ["LOW", "NORMAL", "HIGH", "URGENT"],
+    })
+      .notNull()
+      .default("NORMAL"),
+
+    section_id: text("section_id"),
+    last_customer_message: text("last_customer_message"),
+
+    resolved_at: timestamp("resolved_at"),
+    resolved_by: text("resolved_by"),
+
+    last_message_at: timestamp("last_message_at").defaultNow(),
+    created_at: timestamp("created_at").defaultNow(),
   },
 
   (table) => [
     index("conversation_chatbot_idx").on(table.chatbot_id),
+    index("conversation_workspace_idx").on(table.workspace_id),
+    index("conversation_workspace_status_idx").on(table.workspace_id, table.status),
+    index("conversation_workspace_assigned_idx").on(
+      table.workspace_id,
+      table.assigned_agent_email
+    ),
+    index("conversation_visitor_idx").on(table.chatbot_id, table.visitor_id),
     index("conversation_created_idx").on(table.created_at),
   ]
 );
 
 /* =====================================================
    MESSAGES
+   role:
+     user      = customer (widget)
+     assistant = AI
+     agent     = human support agent
+     system    = lifecycle events (escalation, assignment, resolve)
 ===================================================== */
 
 export const messages = pgTable(
@@ -250,31 +286,42 @@ export const messages = pgTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
 
-    conversation_id: text("conversation_id")
-      .notNull(),
+    conversation_id: text("conversation_id").notNull(),
 
     role: text("role", {
-      enum: ["user", "assistant"],
+      enum: ["user", "assistant", "agent", "system"],
     }).notNull(),
 
     content: text("content").notNull(),
 
-    is_streaming: boolean("is_streaming")
-      .default(false),
+    sender_id: text("sender_id"),
+    sender_email: text("sender_email"),
+    sender_name: text("sender_name"),
 
-    created_at: timestamp("created_at")
-      .defaultNow(),
+    /**
+     * Client-generated id for idempotent sends (widget / agent UI).
+     * Unique per conversation when present — prevents duplicate inserts on retries.
+     */
+    client_message_id: text("client_message_id"),
+
+    metadata: jsonb("metadata"),
+
+    is_streaming: boolean("is_streaming").default(false),
+
+    created_at: timestamp("created_at").defaultNow(),
   },
 
   (table) => [
     index("messages_conversation_idx").on(table.conversation_id),
     index("messages_created_idx").on(table.created_at),
+    index("messages_client_id_idx").on(table.conversation_id, table.client_message_id),
   ]
 );
 
 /**
  * ================================
- * BILLING AND USAGE
+ * BILLING (simple Free + Pro via Lemon Squeezy)
+ * Quota source of truth = workspace_usage_monthly.ai_messages only.
  * ================================
  */
 export const plans = pgTable("plans", {
@@ -282,21 +329,14 @@ export const plans = pgTable("plans", {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
 
+  /** Stable key used in code: free | pro */
+  slug: text("slug").notNull().unique(),
+
   name: text("name").notNull(),
   monthly_price_cents: integer("monthly_price_cents").notNull().default(0),
 
+  /** Only hard quota for v1 */
   included_ai_messages: integer("included_ai_messages").notNull().default(0),
-  included_ingestion_tokens: integer("included_ingestion_tokens").notNull().default(0),
-  included_embedding_tokens: integer("included_embedding_tokens").notNull().default(0),
-  included_storage_mb: integer("included_storage_mb").notNull().default(0),
-  included_sections: integer("included_sections").notNull().default(0),
-  included_team_members: integer("included_team_members").notNull().default(0),
-
-  overage_ai_message_cents: integer("overage_ai_message_cents").notNull().default(0),
-  overage_1k_tokens_cents: integer("overage_1k_tokens_cents").notNull().default(0),
-  overage_1k_embedding_tokens_cents: integer("overage_1k_embedding_tokens_cents")
-    .notNull()
-    .default(0),
 
   is_active: boolean("is_active").notNull().default(true),
   created_at: timestamp("created_at").defaultNow(),
@@ -309,7 +349,7 @@ export const workspace_subscriptions = pgTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
 
-    workspace_id: text("workspace_id").notNull(),
+    workspace_id: text("workspace_id").notNull().unique(),
     plan_id: text("plan_id").notNull(),
 
     status: text("status", {
@@ -319,7 +359,7 @@ export const workspace_subscriptions = pgTable(
       .default("free"),
 
     billing_provider: text("billing_provider", {
-      enum: ["stripe", "manual", "none"],
+      enum: ["lemon_squeezy", "manual", "none"],
     })
       .notNull()
       .default("none"),
@@ -339,109 +379,46 @@ export const workspace_subscriptions = pgTable(
   ]
 );
 
-export const usage_events = pgTable(
-  "usage_events",
+/**
+ * Fast O(1) monthly AI message counter — the only hard quota for v1.
+ * year_month format: YYYY-MM (UTC).
+ */
+export const workspace_usage_monthly = pgTable(
+  "workspace_usage_monthly",
   {
     id: text("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
 
     workspace_id: text("workspace_id").notNull(),
-    section_id: text("section_id"),
-    knowledge_id: text("knowledge_id"),
-    conversation_id: text("conversation_id"),
-    message_id: text("message_id"),
-
-    event_type: text("event_type").notNull(),
-    provider: text("provider", {
-      enum: ["groq", "huggingface", "internal"],
-    }),
-    model: text("model"),
-
-    prompt_tokens: integer("prompt_tokens"),
-    completion_tokens: integer("completion_tokens"),
-    total_tokens: integer("total_tokens"),
-    embedding_tokens: integer("embedding_tokens"),
-    chunk_count: integer("chunk_count"),
-    message_count: integer("message_count"),
-
-    metadata: jsonb("metadata"),
-    billable: boolean("billable").notNull().default(true),
-    created_at: timestamp("created_at").defaultNow(),
-  },
-  (table) => [
-    index("usage_events_workspace_created_idx").on(table.workspace_id, table.created_at),
-    index("usage_events_section_created_idx").on(table.section_id, table.created_at),
-    index("usage_events_event_type_created_idx").on(table.event_type, table.created_at),
-    index("usage_events_billable_created_idx").on(table.billable, table.created_at),
-  ]
-);
-
-export const usage_daily_rollups = pgTable(
-  "usage_daily_rollups",
-  {
-    id: text("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-
-    workspace_id: text("workspace_id").notNull(),
-    section_id: text("section_id"),
-    date: date("date").notNull(),
-
+    year_month: text("year_month").notNull(),
     ai_messages: integer("ai_messages").notNull().default(0),
-    dashboard_test_messages: integer("dashboard_test_messages").notNull().default(0),
-    prompt_tokens: integer("prompt_tokens").notNull().default(0),
-    completion_tokens: integer("completion_tokens").notNull().default(0),
-    total_tokens: integer("total_tokens").notNull().default(0),
-    embedding_tokens: integer("embedding_tokens").notNull().default(0),
-    chunks_created: integer("chunks_created").notNull().default(0),
-    knowledge_sources_created: integer("knowledge_sources_created").notNull().default(0),
-    estimated_cost_cents: integer("estimated_cost_cents").notNull().default(0),
 
-    created_at: timestamp("created_at").defaultNow(),
     updated_at: timestamp("updated_at").defaultNow(),
+    created_at: timestamp("created_at").defaultNow(),
   },
   (table) => [
-    index("usage_daily_rollups_workspace_date_idx").on(table.workspace_id, table.date),
-    index("usage_daily_rollups_section_date_idx").on(table.section_id, table.date),
+    index("workspace_usage_monthly_workspace_idx").on(table.workspace_id),
+    uniqueIndex("workspace_usage_monthly_unique_idx").on(
+      table.workspace_id,
+      table.year_month
+    ),
   ]
 );
 
-/* =====================================================
-   WIDGETS
-===================================================== */
+/** Idempotency for Lemon Squeezy webhook deliveries. */
+export const billing_webhook_events = pgTable("billing_webhook_events", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
 
-export const widgets = pgTable(
-  "widgets",
-  {
-    id: text("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
+  provider: text("provider").notNull().default("lemon_squeezy"),
+  event_id: text("event_id").notNull().unique(),
+  event_name: text("event_name").notNull(),
+  payload: jsonb("payload"),
+  processed_at: timestamp("processed_at").defaultNow(),
+});
 
-    organization_id: text("organization_id")
-      .notNull(),
-
-    name: text("name")
-      .notNull(),
-
-    public_key: text("public_key")
-      .notNull(),
-
-    allowed_domains: text("allowed_domains")
-      .array(),
-
-    status: text("status", {
-      enum: ["active", "disabled"],
-    }).default("active"),
-
-    created_at: timestamp("created_at")
-      .defaultNow(),
-  },
-
-  (table) => [
-    index("widget_org_idx").on(table.organization_id),
-  ]
-);
 // Backward-compatible aliases for older imports.
 export const User = users;
 export const teamMembers = team_members;

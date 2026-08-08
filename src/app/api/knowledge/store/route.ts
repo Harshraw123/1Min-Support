@@ -15,8 +15,6 @@ import { knowledge as knowledgeTable, knowledge_chunks as knowledgeChunksTable }
 import { eq } from "drizzle-orm";
 import { getSession } from "@/lib/auth/getSession";
 import { deleteKnowledgeChunks } from "@/lib/knowledge/deleteKnowledgeChunks";
-import { recordUsageEvent } from "@/lib/billing/recordUsageEvent";
-import { checkUsageLimit } from "@/lib/billing/checkUsageLimit";
 import { isKnowledgeChunksReady } from "@/lib/db/knowledgeInfra";
 import { isMissingRelationError } from "@/lib/db/pgErrors";
 
@@ -184,13 +182,6 @@ async function saveKnowledgeWithChunks(args: {
       );
     }
 
-    await recordKnowledgeUsage({
-      flow: args.flow,
-      workspaceId: args.workspaceId,
-      knowledgeId: inserted.id,
-      rawContent: args.rawContent,
-      prepared: args.prepared,
-    });
     return inserted;
   } catch (error) {
     if (chunksReady) {
@@ -201,91 +192,6 @@ async function saveKnowledgeWithChunks(args: {
     await db.delete(knowledgeTable).where(eq(knowledgeTable.id, inserted.id));
     throw error;
   }
-}
-
-async function recordKnowledgeUsage(args: {
-  flow: KnowledgeFlow;
-  workspaceId: string;
-  knowledgeId: string;
-  rawContent: string;
-  prepared: PreparedKnowledge;
-}) {
-  const { prepared } = args;
-
-  await recordUsageEvent({
-    workspace_id: args.workspaceId,
-    knowledge_id: args.knowledgeId,
-    event_type: "knowledge_ingest",
-    provider: "internal",
-    total_tokens: approximateTokenCount(args.rawContent),
-    metadata: {
-      flow: args.flow,
-      rawLength: args.rawContent.length,
-    },
-    billable: true,
-  });
-
-  await recordUsageEvent({
-    workspace_id: args.workspaceId,
-    knowledge_id: args.knowledgeId,
-    event_type: "content_summarize",
-    provider: "groq",
-    model: prepared.tokenUsage.summarize.model,
-    prompt_tokens: prepared.tokenUsage.summarize.promptTokens,
-    completion_tokens: prepared.tokenUsage.summarize.completionTokens,
-    total_tokens: prepared.tokenUsage.summarize.totalTokens,
-    metadata: {
-      flow: args.flow,
-    },
-    billable: true,
-  });
-
-  await recordUsageEvent({
-    workspace_id: args.workspaceId,
-    knowledge_id: args.knowledgeId,
-    event_type: "content_clean",
-    provider: "groq",
-    model: prepared.tokenUsage.clean.model,
-    prompt_tokens: prepared.tokenUsage.clean.promptTokens,
-    completion_tokens: prepared.tokenUsage.clean.completionTokens,
-    total_tokens: prepared.tokenUsage.clean.totalTokens,
-    metadata: {
-      flow: args.flow,
-      cleanLength: prepared.cleanMarkdown.length,
-    },
-    billable: true,
-  });
-
-  await recordUsageEvent({
-    workspace_id: args.workspaceId,
-    knowledge_id: args.knowledgeId,
-    event_type: "embedding_generate",
-    provider: "huggingface",
-    model: HF_EMBEDDING_MODEL,
-    embedding_tokens: prepared.tokenUsage.embedding.embeddingTokens,
-    chunk_count: prepared.chunks.length,
-    metadata: {
-      flow: args.flow,
-      dimensions: HF_EMBEDDING_DIMENSIONS,
-      failed: Boolean(prepared.embeddingError),
-      error: prepared.embeddingError,
-    },
-    billable: true,
-  });
-
-  await recordUsageEvent({
-    workspace_id: args.workspaceId,
-    knowledge_id: args.knowledgeId,
-    event_type: "chunk_store",
-    provider: "internal",
-    embedding_tokens: prepared.tokenUsage.embedding.embeddingTokens,
-    chunk_count: prepared.chunks.length,
-    metadata: {
-      flow: args.flow,
-      embedded: Boolean(prepared.embeddings),
-    },
-    billable: true,
-  });
 }
 
 export async function POST(req: NextRequest) {
@@ -308,11 +214,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    // TODO: flip enforce to true when plan policy is ready for ingestion.
-    await checkUsageLimit({ workspace_id: workspaceId, enforce: false }).catch((error) => {
-      console.error("[USAGE_LIMIT_CHECK_ERROR]", error);
-    });
 
     const contentType = req.headers.get("content-type") || "";
     const isFormData = contentType.includes("multipart/form-data");

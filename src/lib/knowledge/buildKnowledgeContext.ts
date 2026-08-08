@@ -71,8 +71,6 @@ export async function buildKnowledgeContextForChat(args: {
       query,
       knowledgeSourceIds: sourceIds,
       topK: 8,
-      recordUsage: true,
-      billable: args.billable ?? false,
     });
 
     if (chunks.length > 0) {

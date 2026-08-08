@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface ChatContainerProps {
   token: string;
@@ -7,14 +7,68 @@ interface ChatContainerProps {
   color?: string;
   sections?: ChatSection[];
   activeSectionId?: string | null;
+  widgetId?: string | null;
 }
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
+type ChatMessage = {
+  id?: string;
+  role: "user" | "assistant" | "agent" | "system";
+  content: string;
+  senderName?: string | null;
+};
+
 type ChatSection = { id: string; name: string };
 
 function normalizeColor(value?: string) {
   const color = value?.trim();
   return color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#2563eb";
+}
+
+function storageKey(widgetId: string | null | undefined, suffix: string) {
+  return `oms_${widgetId || "default"}_${suffix}`;
+}
+
+function readStored(widgetId: string | null | undefined, suffix: string) {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(storageKey(widgetId, suffix));
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(widgetId: string | null | undefined, suffix: string, value: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(storageKey(widgetId, suffix), value);
+  } catch {
+    // Ignore quota / private mode failures — chat still works without persistence.
+  }
+}
+
+function ensureVisitorId(widgetId: string | null | undefined) {
+  const existing = readStored(widgetId, "visitor_id");
+  if (existing) return existing;
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `vis_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  writeStored(widgetId, "visitor_id", id);
+  return id;
+}
+
+function newClientMessageId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `cmsg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+/** Client-side safety net for any [[ESCALATE|...]] that slipped through older responses. */
+function sanitizeAssistantContent(content: string) {
+  return content
+    .replace(/\[\[\s*ESCALATE\b[\s\S]*?\]\]\s*/gi, "")
+    .trim();
 }
 
 const ChatContainer = ({
@@ -23,6 +77,7 @@ const ChatContainer = ({
   color,
   sections = [],
   activeSectionId,
+  widgetId,
 }: ChatContainerProps) => {
   const accentColor = normalizeColor(color);
   const resolvedInitialMessage = initialMessage || "Hi there! How can I help you today?";
@@ -36,31 +91,173 @@ const ChatContainer = ({
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [handlingMode, setHandlingMode] = useState<"AI" | "HUMAN">("AI");
+  const [waitingForAgent, setWaitingForAgent] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const [inFlight, setInFlight] = useState(false);
 
-  // Ref attached to a sentinel div at the bottom of the message list.
-  // Scrolled into view whenever messages or isTyping changes.
   const bottomRef = useRef<HTMLDivElement>(null);
+  const visitorIdRef = useRef<string>("");
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
+  const hydrate = useCallback(async () => {
+    if (!token.trim()) {
+      setHydrated(true);
+      return;
+    }
+
+    visitorIdRef.current = ensureVisitorId(widgetId);
+    const storedConversationId = readStored(widgetId, "conversation_id");
+
+    try {
+      const params = new URLSearchParams();
+      if (storedConversationId) params.set("conversationId", storedConversationId);
+      params.set("visitorId", visitorIdRef.current);
+
+      const response = await fetch(`/api/widget/conversation?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token.trim()}` },
+      });
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          conversation?: {
+            id: string;
+            handlingMode?: string;
+            escalated?: boolean;
+          } | null;
+          messages?: Array<{
+            id: string;
+            role: ChatMessage["role"];
+            content: string;
+            senderName?: string | null;
+          }>;
+        };
+
+        if (data.conversation?.id) {
+          setConversationId(data.conversation.id);
+          writeStored(widgetId, "conversation_id", data.conversation.id);
+          setHandlingMode(data.conversation.handlingMode === "HUMAN" ? "HUMAN" : "AI");
+          setWaitingForAgent(Boolean(data.conversation.escalated));
+        }
+
+        const history = Array.isArray(data.messages) ? data.messages : [];
+        if (history.length > 0) {
+          setMessages(
+            history.map((m) => ({
+              id: m.id,
+              role: m.role,
+              content:
+                m.role === "assistant" ? sanitizeAssistantContent(m.content) : m.content,
+              senderName: m.senderName,
+            }))
+          );
+        } else {
+          setMessages([{ role: "assistant", content: resolvedInitialMessage }]);
+        }
+      }
+    } catch (error) {
+      console.error("[embed hydrate]", error);
+    } finally {
+      setHydrated(true);
+    }
+  }, [token, widgetId, resolvedInitialMessage]);
+
   useEffect(() => {
+    setHydrated(false);
+    void hydrate();
+  }, [hydrate]);
+
+  // While waiting for a human, poll so agent replies appear without refresh.
+  useEffect(() => {
+    if (!hydrated || !token.trim() || !conversationId) return;
+    if (handlingMode !== "HUMAN" && !waitingForAgent) return;
+
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const params = new URLSearchParams({
+          conversationId,
+          visitorId: visitorIdRef.current || ensureVisitorId(widgetId),
+        });
+        const response = await fetch(`/api/widget/conversation?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token.trim()}` },
+        });
+        if (!response.ok || cancelled) return;
+        const data = (await response.json()) as {
+          conversation?: { handlingMode?: string; escalated?: boolean } | null;
+          messages?: Array<{
+            id: string;
+            role: ChatMessage["role"];
+            content: string;
+            senderName?: string | null;
+          }>;
+        };
+        const history = Array.isArray(data.messages) ? data.messages : [];
+        if (history.length > 0 && !cancelled) {
+          setMessages(
+            history.map((m) => ({
+              id: m.id,
+              role: m.role,
+              content:
+                m.role === "assistant" ? sanitizeAssistantContent(m.content) : m.content,
+              senderName: m.senderName,
+            }))
+          );
+        }
+        if (data.conversation?.handlingMode === "HUMAN") {
+          setHandlingMode("HUMAN");
+          setWaitingForAgent(true);
+        }
+      } catch {
+        // Ignore transient poll errors.
+      }
+    };
+
+    const interval = window.setInterval(() => {
+      void poll();
+    }, 8000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [hydrated, token, conversationId, handlingMode, waitingForAgent, widgetId]);
+
+  // Section switch only resets local preview when there is no persisted conversation yet.
+  useEffect(() => {
+    if (!hydrated || conversationId) return;
     setMessages([{ role: "assistant", content: resolvedInitialMessage }]);
     setInput("");
     setIsTyping(false);
-  }, [activeSectionId, resolvedInitialMessage]);
+  }, [activeSectionId, resolvedInitialMessage, hydrated, conversationId]);
 
   const handleSend = async () => {
-    if (!token.trim() || !input.trim() || isTyping || (hasSections && !activeSectionId)) return;
+    if (
+      !token.trim() ||
+      !input.trim() ||
+      isTyping ||
+      inFlight ||
+      (hasSections && !activeSectionId)
+    ) {
+      return;
+    }
 
-    const userMessage: ChatMessage = { role: "user", content: input.trim() };
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
+    const text = input.trim();
+    const clientMessageId = newClientMessageId();
+    const userMessage: ChatMessage = { role: "user", content: text };
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsTyping(true);
+    setInFlight(true);
 
     try {
+      if (!visitorIdRef.current) {
+        visitorIdRef.current = ensureVisitorId(widgetId);
+      }
+
       const response = await fetch("/api/widget/chat", {
         method: "POST",
         headers: {
@@ -68,12 +265,23 @@ const ChatContainer = ({
           Authorization: `Bearer ${token.trim()}`,
         },
         body: JSON.stringify({
-          messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
+          message: text,
+          clientMessageId,
+          conversationId,
+          visitorId: visitorIdRef.current,
           section_id: activeSectionId,
         }),
       });
 
-      const data = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
+      const data = (await response.json().catch(() => ({}))) as {
+        message?: string | null;
+        error?: string;
+        conversationId?: string;
+        handlingMode?: string;
+        waitingForAgent?: boolean;
+        aiResponded?: boolean;
+        escalated?: boolean;
+      };
 
       if (!response.ok) {
         const errText =
@@ -83,23 +291,34 @@ const ChatContainer = ({
         throw new Error(errText);
       }
 
-      const assistantMessage =
-        typeof data?.message === "string" && data.message.trim()
-          ? data.message.trim()
-          : "Sorry, I could not generate a response.";
+      if (typeof data.conversationId === "string" && data.conversationId) {
+        setConversationId(data.conversationId);
+        writeStored(widgetId, "conversation_id", data.conversationId);
+      }
 
-      setMessages((prev) => [...prev, { role: "assistant", content: assistantMessage }]);
+      const nextMode = data.handlingMode === "HUMAN" ? "HUMAN" : "AI";
+      setHandlingMode(nextMode);
+      setWaitingForAgent(Boolean(data.waitingForAgent || data.escalated));
+
+      if (typeof data.message === "string" && data.message.trim()) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: sanitizeAssistantContent(data.message!.trim()) },
+        ]);
+      }
+      // Human-owned turns intentionally have no AI reply; banner covers waiting state.
     } catch (e) {
       console.error("[embed chat]", e);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "Sorry, something went wrong. Please refresh and try again.",
+          content: "Sorry, something went wrong. Please try again in a moment.",
         },
       ]);
     } finally {
       setIsTyping(false);
+      setInFlight(false);
     }
   };
 
@@ -123,24 +342,51 @@ const ChatContainer = ({
           }
         `}
       </style>
+      {waitingForAgent || handlingMode === "HUMAN" ? (
+        <div className="shrink-0 border-b border-border bg-muted/50 px-4 py-2 text-xs text-muted-foreground">
+          Connected with support queue — a human agent will continue this conversation.
+        </div>
+      ) : null}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-          >
+        {messages.map((message, index) => {
+          if (message.role === "system") {
+            return (
+              <div
+                key={message.id || index}
+                className="mx-auto max-w-[90%] rounded-md border border-dashed border-border px-3 py-1.5 text-center text-[11px] text-muted-foreground"
+              >
+                {message.content}
+              </div>
+            );
+          }
+
+          const isUser = message.role === "user";
+          const isAgent = message.role === "agent";
+          return (
             <div
-              className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                message.role === "user"
-                  ? "text-white"
-                  : "bg-muted text-foreground"
-              }`}
-              style={message.role === "user" ? { backgroundColor: accentColor } : undefined}
+              key={message.id || index}
+              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
             >
-              {message.content}
+              <div
+                className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                  isUser
+                    ? "text-white"
+                    : isAgent
+                      ? "border border-sky-500/30 bg-sky-500/10 text-foreground"
+                      : "bg-muted text-foreground"
+                }`}
+                style={isUser ? { backgroundColor: accentColor } : undefined}
+              >
+                {isAgent && message.senderName ? (
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide opacity-70">
+                    {message.senderName}
+                  </div>
+                ) : null}
+                {message.content}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {isTyping && (
           <div className="flex justify-start">
             <div className="bg-muted text-foreground rounded-lg px-4 py-2">
@@ -158,7 +404,6 @@ const ChatContainer = ({
             </div>
           </div>
         )}
-        {/* Sentinel element — always stays at the bottom of the message list */}
         <div ref={bottomRef} />
       </div>
 
@@ -174,14 +419,25 @@ const ChatContainer = ({
                 void handleSend();
               }
             }}
-            placeholder="Type your message..."
+            placeholder={
+              handlingMode === "HUMAN"
+                ? "Message support…"
+                : "Type your message..."
+            }
             className="flex-1 px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none"
-            disabled={isTyping || (hasSections && !activeSectionId)}
+            disabled={isTyping || inFlight || (hasSections && !activeSectionId) || !hydrated}
           />
           <button
             type="button"
             onClick={() => void handleSend()}
-            disabled={isTyping || !token.trim() || !input.trim() || (hasSections && !activeSectionId)}
+            disabled={
+              isTyping ||
+              inFlight ||
+              !token.trim() ||
+              !input.trim() ||
+              (hasSections && !activeSectionId) ||
+              !hydrated
+            }
             className="px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             style={{ backgroundColor: accentColor }}
           >

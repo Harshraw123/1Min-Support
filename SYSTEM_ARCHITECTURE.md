@@ -1,350 +1,401 @@
-# System Architecture Flow: Sections, Chatbot & Knowledge
+# System Architecture — 1-Min Customer Support
 
-## 📋 Overview
-This document explains how the three main components (Sections, Chatbot, Knowledge) work together, their APIs, data flow, and context passing in the chat simulator.
-
----
-
-## 🗄️ Database Schema
-
-### Knowledge Table
-```sql
-knowledge {
-  id: text (primary key)
-  user_email: text (not null)
-  workspace_id: text (not null)
-  title: text (not null)           // Display name
-  content: text (not null)         // Processed markdown content
-  type: text (not null)            // 'website' | 'text' | 'upload'
-  status: text (not null)          // 'active' | 'training' | 'error' | 'excluded'
-  source_url: text                 // Original URL (for website type)
-  meta_data: text                  // Additional metadata JSON
-  created_at: text (default now())
-}
-```
-
-### Sections Table
-```sql
-sections {
-  id: text (primary key)
-  user_email: text (not null)
-  workspace_id: text (not null)
-  name: text (not null)            // Section name
-  description: text (not null)     // When to use this section
-  tone: text (not null)            // 'neutral' | 'friendly' | 'professional' | 'strict'
-  scope_label: text (not null)     // 'general' | custom labels
-  allowed_topics: text             // JSON array of allowed topics
-  blocked_topics: text             // JSON array of blocked topics
-  fallback_behavior: text (not null) // 'escalate' | 'refuse' | 'general_answer'
-  source_ids: text                 // JSON array of knowledge IDs
-  status: text (not null)          // 'active' | 'inactive'
-  created_at: text (default now())
-}
-```
-
-### Chatbot Metadata
-```sql
-// Stored in separate metadata table or chatbot_settings
-{
-  primaryColor: text
-  welcomeMessage: text
-  avatarSrc: text
-  widgetId: text
-  user_email: text
-  workspace_id: text
-}
-```
+Readable reference for the **current** product architecture after knowledge, RAG, embed widget, and **human handover** were implemented.
 
 ---
 
-## 🔄 API Flow Diagram
+## 1. Product overview
+
+1-Min Support is a multi-tenant AI customer-support SaaS:
+
+1. Dashboard users manage **knowledge**, **sections**, and **chatbot appearance** for their workspace.
+2. Customers chat through an **embeddable widget** on the customer’s website.
+3. AI answers from workspace knowledge (RAG). When it cannot resolve an issue, it **escalates** into a persistent support queue.
+4. Organization members take ownership, reply as humans, and resolve conversations.
+5. Once a human owns a conversation, **AI must not auto-reply**.
+
+Core principle:
+
+> Escalation means “needs human attention,” not “a human is online right now.” Unassigned escalations stay in the queue until an agent takes them.
+
+---
+
+## 2. High-level system map
+
+```text
+Customer website
+  → public/widget.js (SDK)
+  → /api/widget/session (JWT)
+  → /embed + ChatContainer
+  → /api/widget/chat | /api/widget/conversation
+  → conversation + messages (Neon/Postgres)
+  → workspaceChatCompletion (Groq + RAG) when handling_mode = AI
+  → escalate → support queue
+  → Dashboard Conversations inbox
+  → agent take / assign / reply / resolve
+```
 
 ```mermaid
-graph TD
-    A[User Dashboard] --> B[Knowledge API]
-    A --> C[Sections API]
-    A --> D[Chatbot API]
-    
-    B --> E[Knowledge Table]
-    C --> F[Sections Table]
-    D --> G[Chatbot Settings]
-    
-    E --> H[Chat Simulator]
-    F --> H
-    G --> H
-    
-    H --> I[AI Response]
-    
-    subgraph "Knowledge Flow"
-        B1[POST /api/knowledge/store] --> B2[Process Content]
-        B2 --> B3[Store in knowledge table]
-        B4[GET /api/knowledge/fetch] --> B5[Return knowledge sources]
-    end
-    
-    subgraph "Sections Flow"
-        C1[POST/PUT /api/sections/store] --> C2[Create/Update Section]
-        C2 --> C3[Link knowledge sources]
-        C4[GET /api/sections/fetch] --> C5[Return sections with sources]
-    end
-    
-    subgraph "Chatbot Flow"
-        D1[GET /api/chatbot/metadata/fetch] --> D2[Load appearance settings]
-        D3[PUT /api/chatbot/metadata/update] --> D4[Save settings]
-    end
+flowchart TD
+  subgraph CustomerSite[Customer website]
+    WJS[widget.js]
+    EMB[/embed ChatContainer]
+  end
+
+  subgraph PublicAPI[Public widget APIs - JWT]
+    WS[/api/widget/session]
+    WC[/api/widget/chat]
+    WV[/api/widget/conversation]
+  end
+
+  subgraph Core[Shared domain]
+    CONV[(conversation)]
+    MSG[(messages)]
+    AI[workspaceChatCompletion]
+    RAG[pgvector + knowledge_chunks]
+    ESC[escalateConversation]
+  end
+
+  subgraph Dashboard[Dashboard - session cookie]
+    INBOX[Conversations inbox]
+    KNOW[Knowledge / Sections / Chatbot]
+    TEAM[Team members]
+    CA[/api/conversations/*]
+  end
+
+  WJS --> WS --> EMB
+  EMB --> WC
+  EMB --> WV
+  WC --> CONV
+  WC --> MSG
+  WC -->|if AI mode| AI --> RAG
+  AI --> ESC --> CONV
+  INBOX --> CA --> CONV
+  CA --> MSG
+  KNOW --> RAG
+  TEAM --> CA
 ```
 
 ---
 
-## 📊 Detailed Data Flow
+## 3. Tenancy & identity
 
-### 1. Knowledge Management Flow
+| Concept | Source of truth | Notes |
+|---|---|---|
+| Workspace / org | `session.organization_id` (Scalekit) | Used as `workspace_id` everywhere |
+| Chatbot id | Same org id today | Stored as `chatbot_id`; kept separate so multi-bot can land later |
+| Dashboard auth | `user_session` cookie via `getSession()` | Server routes must use session org — never trust client org ids |
+| Widget auth | HS256 JWT (`JWT_SECRET`) | Payload: `widgetId`, `chatbotId`, `sessionId` (2h) |
+| Team | `team_members` | Roles: `admin` / `member` (Scalekit invites) |
+| Visitor continuity | `visitor_id` in localStorage | Survives refresh better than rotating JWT `sessionId` |
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant D as Dashboard
-    participant API as Knowledge API
-    participant DB as Knowledge Table
-    participant AI as AI Processor
-    
-    U->>D: Add Knowledge (Website/Text/Upload)
-    D->>API: POST /api/knowledge/store
-    API->>AI: Process content (summarize/extract)
-    AI-->>API: Processed markdown
-    API->>DB: Store processed content
-    DB-->>API: Success with knowledge ID
-    API-->>D: Knowledge created
-    D-->>U: Show in knowledge table
-    
-    Note over D: When chat needs context
-    D->>API: GET /api/knowledge/fetch
-    API->>DB: Query user's knowledge
-    DB-->>API: Return knowledge sources
-    API-->>D: Knowledge list with content
+Tenant rule: every conversation query is scoped by `workspace_id` (dashboard) or JWT `chatbotId` (widget).
+
+---
+
+## 4. Database model (live)
+
+### 4.1 Knowledge & RAG
+
+| Table | Role |
+|---|---|
+| `knowledge` | Source summary for UI (`content` is compact) |
+| `knowledge_chunks` | Cleaned chunks + `vector(384)` embeddings (`BAAI/bge-small-en-v1.5`) |
+| `sections` | Tone, topics, `fallback_behavior`, linked `source_ids` |
+| `chat_bot_metadata` | Widget appearance, `widget_id`, optional `allowed_domain` |
+
+Ingestion path:
+
+```text
+raw upload / scrape / text
+  → summarizeMarkdown → knowledge.content (UI)
+  → cleanContent → chunkText → embedChunks → knowledge_chunks
 ```
 
-### 2. Sections Management Flow
+Retrieval path (chat):
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant D as Dashboard
-    participant API as Sections API
-    participant DB as Sections Table
-    participant KDB as Knowledge Table
-    
-    U->>D: Create/Edit Section
-    D->>API: POST/PUT /api/sections/store
-    API->>DB: Store section with linked knowledge IDs
-    DB-->>API: Section saved
-    API-->>D: Success
-    
-    Note over D: When loading sections
-    D->>API: GET /api/sections/fetch
-    API->>DB: Query sections
-    API->>KDB: Fetch linked knowledge content
-    KDB-->>API: Knowledge content
-    API-->>D: Sections with full context
+```text
+query embed + pgvector distance + pg_trgm
+  → RRF merge
+  → buildKnowledgeContextForChat
+  → fallback to knowledge.content if no chunk hits
 ```
 
-### 3. Chatbot Configuration Flow
+### 4.2 Conversations & messages
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant D as Dashboard
-    participant API as Chatbot API
-    participant DB as Settings Table
-    
-    D->>API: GET /api/chatbot/metadata/fetch
-    API->>DB: Get user's chatbot settings
-    DB-->>API: Settings (color, avatar, welcome)
-    API-->>D: Configuration loaded
-    
-    U->>D: Change appearance
-    D->>API: PUT /api/chatbot/metadata/update
-    API->>DB: Update settings
-    DB-->>API: Saved
-    API-->>D: Success
+**`conversation`** (lifecycle + ownership)
+
+| Field | Meaning |
+|---|---|
+| `workspace_id` | Tenant |
+| `chatbot_id` | Bot for that tenant |
+| `visitor_id` | Stable browser visitor |
+| `widget_session_id` | Current JWT session |
+| `status` | `ai_active` \| `escalated` \| `human_handling` \| `resolved` (legacy: `active`/`closed` normalized) |
+| `handling_mode` | `AI` \| `HUMAN` — who may auto-reply |
+| `assigned_agent_*` | Owner agent (nullable while queued) |
+| `escalation_reason` / `escalation_summary` / `escalated_at` / `escalated_by` | Agent context |
+| `priority` | `LOW` \| `NORMAL` \| `HIGH` \| `URGENT` |
+| `last_customer_message` | Inbox preview |
+| `resolved_at` / `resolved_by` | Resolution audit |
+
+**`messages`**
+
+| `role` | Speaker |
+|---|---|
+| `user` | Customer |
+| `assistant` | AI |
+| `agent` | Human support agent |
+| `system` | Lifecycle event (escalate / assign / resolve / reopen) |
+
+Also: `sender_*`, `client_message_id` (idempotent retries), `metadata`.
+
+---
+
+## 5. Conversation lifecycle & human handover
+
+```text
+AI_ACTIVE (handling_mode=AI)
+    │  AI cannot resolve / customer asks for human / configured escalate
+    ▼
+ESCALATED (handling_mode=HUMAN, assigned=null)
+    │  sits in support queue — agent may be offline
+    ▼
+HUMAN_HANDLING (assigned agent)
+    │  agent replies; AI stays silent
+    ▼
+RESOLVED
+    │  customer messages again → reopen (default AI)
+    ▼
+AI_ACTIVE or HUMAN_HANDLING
+```
+
+### Ownership rules
+
+1. **`handling_mode = AI`** → widget chat may call Groq.
+2. **`handling_mode = HUMAN`** → customer messages are **persisted only**; no AI reply.
+3. **Take conversation** uses conditional `UPDATE … WHERE assigned_agent_email IS NULL` so only one agent wins (Neon HTTP has no interactive transactions).
+4. Before delivering an AI reply, the server **re-reads** the conversation. If an agent took over mid-generation, the AI text is discarded.
+5. Escalation does **not** claim a human is joining now. Customer copy says the request is saved and an agent will respond when available.
+
+### Escalation reasons
+
+```text
+AI_UNABLE_TO_RESOLVE
+CUSTOMER_REQUESTED_HUMAN
+ACCOUNT_SPECIFIC_ACTION
+BILLING_ISSUE
+REFUND_REQUEST
+TECHNICAL_ISSUE
+KNOWLEDGE_NOT_FOUND
+CONFIGURED_ESCALATION_RULE
+OTHER
+```
+
+Detection (`src/lib/conversations/escalation.ts`):
+
+1. Model marker: `[[ESCALATE|REASON|agent summary]]` then customer-facing text  
+2. Customer phrases requesting a human  
+3. Soft AI “forwarded to support” phrasing / knowledge miss + section `fallback_behavior=escalate`
+
+Shared AI entrypoint: `src/lib/chat/workspaceChatCompletion.ts` (dashboard test + widget).
+
+---
+
+## 6. Widget / SDK flow
+
+```text
+Script tag data-id=widgetId
+  → guard duplicate init (window.__OMS_WIDGET__{id})
+  → POST /api/widget/session → JWT + config
+  → iframe /embed?widgetId&sessionToken
+  → ChatContainer
+       localStorage: visitor_id, conversation_id
+       GET  /api/widget/conversation  (resume, no create)
+       POST /api/widget/chat          (create/reuse + message)
+       poll while HUMAN for agent replies
+```
+
+Hardening:
+
+- No server secrets in the client SDK  
+- Idempotent sends via `clientMessageId`  
+- Refresh keeps the same conversation when possible  
+- Domain check via `chat_bot_metadata.allowed_domain` on session create  
+
+---
+
+## 7. Dashboard conversations inbox
+
+UI: `/dashboard/conversations` → `ConversationsInbox`
+
+| Filter | Meaning |
+|---|---|
+| All / Active | Open work |
+| Escalated | Needs human; may be unassigned |
+| Unassigned | Escalated with no agent |
+| Mine | Assigned to current session email |
+| Human handling | Actively owned |
+| Resolved | Closed |
+
+Agent actions (all org-scoped server-side):
+
+| Action | Endpoint |
+|---|---|
+| List / search | `GET /api/conversations` |
+| Open thread | `GET /api/conversations/:id` |
+| Take | `POST /api/conversations/:id/take` |
+| Assign | `POST /api/conversations/:id/assign` |
+| Reply | `POST /api/conversations/:id/reply` |
+| Resolve | `POST /api/conversations/:id/resolve` |
+| Reopen | `POST /api/conversations/:id/reopen` |
+
+Domain logic lives in `src/lib/conversations/` so routes stay thin.
+
+---
+
+## 8. API surface (by area)
+
+### Auth
+- `GET /api/auth/login` · `callback` · `logout` · `session`
+
+### Knowledge / sections / chatbot
+- `POST/GET/DELETE /api/knowledge/*`
+- `POST/PUT/GET/DELETE /api/sections/*`
+- `GET/PUT /api/chatbot/metadata/*`
+
+### Widget (public JWT + CORS)
+- `POST /api/widget/session`
+- `GET /api/widget/config`
+- `POST /api/widget/chat`
+- `GET /api/widget/conversation`
+
+### Chat (dashboard)
+- `POST /api/chat/test` — same AI path, `billable: false`, not the production conversation store
+
+### Conversations (dashboard session)
+- See section 7
+
+### Team / org
+- `GET/POST/DELETE /api/team/*`
+- `GET /api/organization/fetch`
+- `POST /api/webhook/secret` (Scalekit membership)
+
+---
+
+## 9. Knowledge → sections → chat context
+
+```text
+Section (tone, topics, fallback, source_ids)
+  → linked knowledge / chunks
+  → workspaceChatCompletion system prompt
+  → short, context-only answers
+  → escalate marker when out of knowledge / human required
+```
+
+Dashboard **Chat Simulator** uses `/api/chat/test` for preview.  
+Production visitors use the **widget** path so conversations enter the inbox.
+
+---
+
+## 10. Security checklist
+
+1. Dashboard APIs: `requireOrgSession()` → `organization_id` from cookie only.  
+2. Conversation reads/writes: `workspace_id = session.organization_id`.  
+3. Widget APIs: tenant from JWT `chatbotId` only.  
+4. Assign target must resolve inside the same org (`team_members` or self).  
+5. Concurrent take: atomic conditional update; loser gets `409`.  
+6. AI after takeover: eligibility re-check before persist/return.
+7. Billing: Lemon webhooks HMAC-verified; plan/quota never trusted from the client.
+
+---
+
+## 10b. Billing (simple Free + Pro via Lemon Squeezy)
+
+Quota source of truth is **monthly billable AI messages**, not token rollups.
+
+| Plan | Monthly AI messages |
+|---|---:|
+| Free | 100 |
+| Pro | 5000 |
+
+```text
+Settings → Upgrade
+  → POST /api/billing/checkout (server stamps workspace_id)
+  → Lemon Squeezy Checkout
+  → POST /api/billing/webhook (signed)
+  → workspace_subscriptions = Pro/active
+
+Widget chat
+  → checkAiMessageQuota(enforce=true)
+  → if over limit: save customer message, no Groq
+  → if allowed: Groq reply → increment workspace_usage_monthly
+```
+
+- Dashboard `/api/chat/test` is **non-billable** (does not burn quota, does not create inbox conversations).
+- Human-handover messages while `handling_mode=HUMAN` do not burn AI quota.
+- Env: `LEMON_SQUEEZY_API_KEY`, `LEMON_SQUEEZY_STORE_ID`, `LEMON_SQUEEZY_PRO_VARIANT_ID`, `LEMON_SQUEEZY_WEBHOOK_SECRET`, `LEMON_SQUEEZY_CHECKOUT_REDIRECT_URL`.
+
+Key files: `src/lib/billing/*`, `src/app/api/billing/*`, Settings `BillingSection`.
+
+---
+
+## 11. Key source files
+
+| Path | Responsibility |
+|---|---|
+| `src/db/schema.ts` | Tables including conversation/messages/billing |
+| `src/lib/conversations/*` | Lifecycle, escalation, auth helpers |
+| `src/lib/billing/*` | Lemon checkout, webhook, AI message quota |
+| `src/lib/chat/workspaceChatCompletion.ts` | Shared Groq + RAG |
+| `src/lib/knowledge/*` | Context build + retrieval |
+| `src/app/api/widget/chat/route.ts` | Public chat + escalate + AI stop + quota |
+| `src/app/api/conversations/**` | Inbox APIs |
+| `src/app/api/billing/**` | Checkout, status, Lemon webhook |
+| `src/components/dashboard/ConversationsInbox.tsx` | Support inbox UI |
+| `src/components/dashboard/BillingSection.tsx` | Plan + usage card |
+| `src/components/chat/ChatContainer.tsx` | Embed chat + persistence |
+| `public/widget.js` | Embed loader / init guard |
+
+---
+
+## 12. End-to-end happy path
+
+```text
+1. Customer opens site → widget.js initializes once → JWT session
+2. Visitor id stored → conversation created/reused on first message
+3. Customer message persisted (role=user)
+4. If handling_mode=AI and under quota → RAG + Groq reply (role=assistant)
+5. If escalate → status=escalated, handling_mode=HUMAN, reason+summary saved
+6. Further customer messages persist; AI stays silent
+7. Agent opens Conversations → Take (or Assign)
+8. status=human_handling → agent replies (role=agent)
+9. Widget polls and shows agent messages
+10. Agent Resolve → status=resolved (no AI follow-up)
 ```
 
 ---
 
-## 🤖 Chat Simulator Context Flow
+## 13. What is intentionally unfinished
 
-### How Context Gets Passed to Chat
-
-```mermaid
-graph LR
-    A[User Input] --> B[Active Section]
-    B --> C[Section Knowledge Sources]
-    C --> D[Knowledge Content]
-    D --> E[AI Context]
-    E --> F[AI Response]
-    
-    subgraph "Context Building"
-        G[Section Rules] --> E
-        H[Tone Settings] --> E
-        I[Allowed/Blocked Topics] --> E
-        J[Fallback Behavior] --> E
-    end
-```
-
-### Chat Context Processing
-
-```typescript
-// Chat Simulator Context Structure
-interface ChatContext {
-  // Active section context
-  activeSection: {
-    id: string
-    name: string
-    tone: 'neutral' | 'friendly' | 'professional' | 'strict'
-    allowedTopics: string[]
-    blockedTopics: string[]
-    fallbackBehavior: 'escalate' | 'refuse' | 'general_answer'
-  }
-  
-  // Knowledge sources for this section
-  knowledgeSources: Array<{
-    id: string
-    title: string
-    content: string      // Processed markdown
-    type: string        // 'website' | 'text' | 'upload'
-    source_url?: string
-  }>
-  
-  // Chatbot appearance
-  appearance: {
-    primaryColor: string
-    avatarSrc: string
-    welcomeMessage: string
-  }
-  
-  // Conversation history
-  messages: Array<{
-    role: 'user' | 'assistant'
-    content: string
-    timestamp: string
-  }>
-}
-```
+- Token/ingestion hard quotas and overage pricing
+- Streaming token responses
+- Real-time push (inbox/widget use short polling)
+- Separate multi-chatbot rows per workspace (`chatbots` table unused)
+- `/api/chat/public` still stubbed (`501`)
+- Customer billing portal deep-link (upgrade via checkout is live)
 
 ---
 
-## 🔗 API Endpoints Summary
+## 14. Summary
 
-### Knowledge APIs
-- **POST** `/api/knowledge/store` - Add/update knowledge source
-- **GET** `/api/knowledge/fetch` - Get all user's knowledge sources
-- **DELETE** `/api/knowledge/delete` - Delete knowledge source
+| Layer | Job |
+|---|---|
+| Knowledge + sections | What the AI is allowed to say |
+| Widget + JWT | Public customer channel |
+| Conversation + handling_mode | Single source of truth for AI vs human |
+| Escalation queue | Persist work when humans are offline |
+| Inbox + team | Humans take ownership without conflicting with AI |
+| Billing (Lemon) | Fair Free/Pro AI message limits, abuse protection |
 
-### Sections APIs
-- **POST** `/api/sections/store` - Create new section
-- **PUT** `/api/sections/store` - Update existing section
-- **GET** `/api/sections/fetch` - Get all user's sections
-- **DELETE** `/api/sections/delete` - Delete section
-
-### Chatbot APIs
-- **GET** `/api/chatbot/metadata/fetch` - Get chatbot settings
-- **PUT** `/api/chatbot/metadata/update` - Update chatbot settings
-
----
-
-## 🎯 Key Integration Points
-
-### 1. Knowledge → Sections
-- Sections link to multiple knowledge sources via `source_ids` JSON array
-- When a section is loaded, it fetches full content from linked knowledge
-- Knowledge content provides the "brain" for section responses
-
-### 2. Sections → Chat Simulator
-- Active section determines conversation context
-- Section tone affects response style
-- Allowed/blocked topics filter responses
-- Fallback behavior handles out-of-scope questions
-
-### 3. Chatbot Settings → UI
-- Primary color sets chat theme
-- Avatar image shows in chat
-- Welcome message starts conversations
-- Widget ID enables embed functionality
-
----
-
-## 🔄 Complete User Journey
-
-```mermaid
-journey
-    title User Journey: Knowledge to Chat
-    section Setup Phase
-      Add Knowledge: 5: User
-        User adds website/text/upload
-        System processes and stores content
-      Create Sections: 4: User
-        User creates sections with rules
-        User links knowledge to sections
-      Configure Chatbot: 3: User
-        User sets appearance
-        System saves preferences
-    
-    section Chat Phase
-      Start Chat: 5: User
-        Chat loads with welcome message
-        System shows active sections
-      Send Message: 5: User
-        User types message
-        System applies section context
-      Get Response: 4: System
-        AI uses linked knowledge
-        System follows section rules
-        Response matches tone setting
-```
-
----
-
-## 🚀 Performance Optimizations
-
-### 1. Knowledge Processing
-- Content is processed once during upload
-- Stored as optimized markdown for fast retrieval
-- Indexed by workspace for quick queries
-
-### 2. Context Loading
-- Sections cache linked knowledge content
-- Chat simulator loads context once per session
-- Incremental updates when sections change
-
-### 3. Response Generation
-- Knowledge context filtered by section rules
-- Tone applied during response generation
-- Fallback behavior prevents hallucinations
-
----
-
-## 🛡️ Security & Multi-tenancy
-
-### Workspace Isolation
-- All queries filtered by `workspace_id`
-- Users can only access their own data
-- Section-knowledge links respect workspace boundaries
-
-### Data Flow Security
-- API calls validate user session
-- Workspace context enforced in all queries
-- Cross-tenant data leakage prevented
-
----
-
-## 📝 Summary
-
-1. **Knowledge** provides the raw content (processed documents, websites, text)
-2. **Sections** organize knowledge with rules and context (when to use, how to respond)
-3. **Chatbot** configures the appearance and behavior (colors, avatar, welcome message)
-4. **Chat Simulator** combines all three to generate contextual responses
-
-The system ensures that:
-- Knowledge is processed once and reused
-- Sections provide intelligent context filtering
-- Chat responses are relevant and properly styled
-- User data remains secure and isolated
+AI handles what it can. When it cannot, the conversation is saved with useful agent context, queued, and continued by one human owner — without AI talking over them. Monthly AI caps keep costs predictable for the organization.

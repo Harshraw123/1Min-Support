@@ -1,18 +1,29 @@
 (function () {
-  const script = document.currentScript;
-  const widgetId = script && script.getAttribute("data-id");
-  const scriptSrc = script && script.getAttribute("src");
-  const baseUrl = scriptSrc ? new URL(scriptSrc, window.location.href).origin : window.location.origin;
-  const instanceId =
-    "oms-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
-
-  const bubbleSize = { width: "65px", height: "65px" };
-  const chatSize = { width: "400px", height: "600px" };
+  var script = document.currentScript;
+  var widgetId = script && script.getAttribute("data-id");
+  var scriptSrc = script && script.getAttribute("src");
+  var baseUrl = scriptSrc
+    ? new URL(scriptSrc, window.location.href).origin
+    : window.location.origin;
 
   if (!widgetId) {
     console.error("[OneMinuteSupport] Missing data-id on script tag");
     return;
   }
+
+  // Prevent duplicate initialization when the snippet is included twice.
+  var globalKey = "__OMS_WIDGET__" + widgetId;
+  if (window[globalKey] && window[globalKey].initialized) {
+    console.warn("[OneMinuteSupport] Widget already initialized for", widgetId);
+    return;
+  }
+  window[globalKey] = { initialized: true };
+
+  var instanceId =
+    "oms-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+
+  var bubbleSize = { width: "65px", height: "65px" };
+  var chatSize = { width: "400px", height: "600px" };
 
   /** @returns {"light"|"dark"|"system"} */
   function resolveEmbedTheme() {
@@ -50,13 +61,23 @@
     })
     .catch(function (err) {
       console.error("[OneMinuteSupport] Error:", err);
+      // Allow a later retry if session failed (e.g. transient network).
+      try {
+        delete window[globalKey];
+      } catch (_) {
+        window[globalKey] = undefined;
+      }
     });
 
   function initializeWidget(options) {
-    const iframe = document.createElement("iframe");
-    const embedUrl = new URL(baseUrl + "/embed");
+    if (window[globalKey] && window[globalKey].iframe) {
+      return;
+    }
+
+    var iframe = document.createElement("iframe");
+    var embedUrl = new URL(baseUrl + "/embed");
+    // Do not put the JWT in the iframe URL (Referer / history leakage). Pass via postMessage only.
     embedUrl.searchParams.set("widgetId", widgetId);
-    embedUrl.searchParams.set("sessionToken", options.token);
     embedUrl.searchParams.set("theme", options.theme || "system");
     embedUrl.searchParams.set("instanceId", instanceId);
 
@@ -78,6 +99,7 @@
     });
 
     document.body.appendChild(iframe);
+    window[globalKey].iframe = iframe;
 
     iframe.addEventListener("load", function () {
       if (iframe.contentWindow) {
@@ -105,13 +127,15 @@
         return;
       }
 
-      const width = typeof event.data.width === "string" ? event.data.width : bubbleSize.width;
-      const height = typeof event.data.height === "string" ? event.data.height : bubbleSize.height;
-      const isChat = width === chatSize.width || height === chatSize.height;
-      const isMobile = window.innerWidth < 500;
+      var width = typeof event.data.width === "string" ? event.data.width : bubbleSize.width;
+      var height =
+        typeof event.data.height === "string" ? event.data.height : bubbleSize.height;
+      var isChat = width === chatSize.width || height === chatSize.height;
+      var isMobile = window.innerWidth < 500;
 
       iframe.style.width = isChat && isMobile ? "calc(100vw - 24px)" : width;
-      iframe.style.height = isChat && isMobile ? "min(640px, calc(100vh - 24px))" : height;
+      iframe.style.height =
+        isChat && isMobile ? "min(640px, calc(100vh - 24px))" : height;
       iframe.style.right = isChat && isMobile ? "12px" : "20px";
       iframe.style.bottom = isChat && isMobile ? "12px" : "20px";
     });

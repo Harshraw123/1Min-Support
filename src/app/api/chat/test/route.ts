@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/getSession";
 import { workspaceChatCompletion } from "@/lib/chat/workspaceChatCompletion";
+import { detectEscalation, stripEscalationMarkers } from "@/lib/conversations";
 
 export async function POST(req: NextRequest) {
   // Dashboard test chat logged-in workspace context me shared AI flow chalata hai.
@@ -39,9 +40,28 @@ export async function POST(req: NextRequest) {
       surface: "dashboard_test",
     });
 
+    const lastUser =
+      [...messages]
+        .reverse()
+        .find(
+          (m: { role?: string; content?: string }) =>
+            m?.role === "user" && typeof m.content === "string" && m.content.trim()
+        )?.content?.trim() ?? "";
+
+    // Same marker handling as production widget — never show [[ESCALATE|...]] in the simulator.
+    const signal = detectEscalation({
+      userMessage: lastUser,
+      aiMessage: result.message,
+      fallbackBehavior: result.sectionFallbackBehavior,
+      usedRag: result.retrieval?.usedRag,
+      hadKnowledgeSources: result.retrieval?.hadKnowledgeSources,
+    });
+
     return NextResponse.json({
-      message: result.message,
+      message: stripEscalationMarkers(signal.customerMessage),
       tokensUsed: result.tokensUsed,
+      wouldEscalate: signal.shouldEscalate,
+      escalationReason: signal.shouldEscalate ? signal.reason : null,
     });
   } catch (error) {
     console.error("[CHAT_ERROR]", error);
