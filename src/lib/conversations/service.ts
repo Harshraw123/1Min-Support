@@ -13,7 +13,7 @@ import {
   needsEscalationAcknowledgement,
   shouldAIRespond,
 } from "./types";
-import { stripEscalationMarkers } from "./escalation";
+import { stripEscalationMarkers, stripOfflineQueueBoilerplate } from "./escalation";
 
 export type ConversationRow = typeof conversation.$inferSelect;
 export type MessageRow = typeof messages.$inferSelect;
@@ -47,7 +47,7 @@ export function ensureUserFacingMessage(
   value: string | null | undefined,
   fallback = AI_FALLBACK_MESSAGE
 ): string {
-  const cleaned = stripEscalationMarkers(value ?? "").trim();
+  const cleaned = stripOfflineQueueBoilerplate(value ?? "").trim();
   return cleaned || fallback;
 }
 

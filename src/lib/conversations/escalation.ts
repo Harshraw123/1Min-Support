@@ -54,6 +54,9 @@ const BUSINESS_SUPPORT_PATTERNS =
 const DEFAULT_ESCALATION_CUSTOMER_MESSAGE =
   "I've forwarded your request to our support team. An agent will respond as soon as they're available.";
 
+const OFFLINE_QUEUE_BOILERPLATE =
+  /\s*Our support team isn't always online immediately, but your conversation has been saved and an agent will respond as soon as they're available\.?/gi;
+
 export const SCOPE_DECLINE_MESSAGE =
   "I can only help with business-related questions about our product and support. Please ask something related to that, and I'll be happy to help.";
 
@@ -82,6 +85,19 @@ export function stripEscalationMarkers(text: string): string {
   return text
     .replace(ESCALATE_BLOCK_GLOBAL, "")
     .replace(ESCALATE_ANY_GLOBAL, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Strip the recurring "support team isn't always online…" suffix from answers. */
+export function stripOfflineQueueBoilerplate(text: string): string {
+  return stripEscalationMarkers(text)
+    .replace(OFFLINE_QUEUE_BOILERPLATE, "")
+    // Model often copies this shorter handoff tail onto real product answers.
+    .replace(
+      /\s*(?:Our support team isn't always online[^.]*\.|Your conversation has been saved[^.]*\.)+/gi,
+      ""
+    )
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -454,7 +470,7 @@ export function detectEscalation(args: {
 /** Offline-safe copy when no agent has taken the conversation yet. */
 export function offlineEscalationCustomerMessage(base: string): string {
   // Never let a machine marker leak through this helper either.
-  const trimmed = stripEscalationMarkers(base);
+  const trimmed = stripOfflineQueueBoilerplate(base);
   if (!trimmed) return DEFAULT_ESCALATION_CUSTOMER_MESSAGE;
 
   if (
@@ -464,5 +480,12 @@ export function offlineEscalationCustomerMessage(base: string): string {
   ) {
     return trimmed;
   }
+
+  // Real product/support answers must NOT get the offline queue line glued on.
+  // Only append for short handoff / escalate-style messages.
+  if (!isEscalationBoilerplateOnly(trimmed) && trimmed.split(/\s+/).filter(Boolean).length > 12) {
+    return trimmed;
+  }
+
   return `${trimmed}${trimmed.endsWith(".") ? "" : "."} Our support team isn't always online immediately, but your conversation has been saved and an agent will respond as soon as they're available.`;
 }

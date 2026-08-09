@@ -1,5 +1,6 @@
 "use client"; 
 
+import DashboardHome from "@/components/dashboard/home/DashboardHome";
 import InitialFormClient from "@/components/dashboard/InitialFormClient";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -53,7 +54,7 @@ const Page = () => {
           }}
         />
       ) : (
-       <></>
+       <DashboardHome />
       )}
     </div>
   );
