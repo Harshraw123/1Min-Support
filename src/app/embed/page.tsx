@@ -109,6 +109,7 @@ const EmbedContent = () => {
   // Prefer postMessage token; URL sessionToken is legacy and should be avoided (Referer leak).
   const sessionToken = readString(searchParams.get("sessionToken"));
   const themeFromUrl = parseUiTheme(readString(searchParams.get("theme")));
+  const instanceIdFromUrl = readString(searchParams.get("instanceId"));
 
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<WidgetConfig>(DEFAULT_CONFIG);
@@ -124,17 +125,27 @@ const EmbedContent = () => {
   }, [themeFromUrl, setTheme]);
 
   // -------------------------------------------------------------------------
-  // 1. Fetch widget config
-  //    • Guard against missing token before fetching
-  //    • Always send the initial bubble resize, even on failure
+  // 1. Session INIT via postMessage
+  //    Parent may fire INIT before React listeners exist — announce READY so
+  //    the loader can resend. Without a token the bubble stays invisible.
   // -------------------------------------------------------------------------
   useEffect(() => {
     // Legacy URL token only — never treat public widgetId as a session JWT.
     if (sessionToken) setChatToken(sessionToken);
 
+    let readyRetry: number | undefined;
+    const stopReady = () => {
+      if (readyRetry !== undefined) {
+        window.clearInterval(readyRetry);
+        readyRetry = undefined;
+      }
+    };
+
     const handleInitMessage = (event: MessageEvent) => {
       if (event.source !== window.parent) return;
       if (event.data?.type !== "INIT") return;
+
+      stopReady();
 
       const nextToken = readString(event.data.token);
       const nextConfig = normalizeConfig(event.data.config);
@@ -150,14 +161,19 @@ const EmbedContent = () => {
 
     window.addEventListener("message", handleInitMessage);
 
+    const announceReady = () => {
+      window.parent.postMessage(
+        { type: "READY", instanceId: instanceIdFromUrl },
+        POST_MESSAGE_TARGET
+      );
+    };
+    announceReady();
+    readyRetry = window.setInterval(announceReady, 250);
+
     let cancelled = false;
     const timeout = window.setTimeout(() => {
       if (cancelled) return;
-      // Still waiting for INIT with a JWT — fail closed instead of hanging forever.
-      setLoading((prev) => {
-        // If loading is already false, INIT arrived.
-        return prev;
-      });
+      stopReady();
       setChatToken((current) => {
         if (current) {
           setLoading(false);
@@ -173,9 +189,10 @@ const EmbedContent = () => {
     return () => {
       cancelled = true;
       window.clearTimeout(timeout);
+      stopReady();
       window.removeEventListener("message", handleInitMessage);
     };
-  }, [sessionToken, setTheme]);
+  }, [sessionToken, setTheme, instanceIdFromUrl]);
 
   useEffect(() => {
     if (!widgetId) {
@@ -248,10 +265,10 @@ const EmbedContent = () => {
   const primaryColor = config.color;
 
   return (
-    <div className="h-full w-full flex items-end justify-end p-2 bg-transparent overflow-hidden text-foreground">
+    <div className="h-full w-full flex items-end justify-end bg-transparent overflow-hidden">
       {isOpen ? (
         <div
-          className="w-full h-full flex flex-col rounded-xl border border-border bg-card text-card-foreground  overflow-hidden ring-1 ring-black/6 dark:ring-white/10"
+          className="w-full h-full flex flex-col rounded-xl border border-border bg-card text-card-foreground overflow-hidden ring-1 ring-black/6 dark:ring-white/10 m-0"
           style={{ animation: "embedZoomIn 200ms ease-out both" }}
         >
           <div
@@ -316,13 +333,13 @@ const EmbedContent = () => {
           </div>
         </div>
       ) : (
-        <div className="relative">
+        <div data-embed-launcher className="relative bg-transparent">
           <button
             onClick={() => handleToggle(true)}
             aria-label="Open chat"
             type="button"
-            className="relative w-[55px] h-[55px] rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background overflow-hidden"
-            style={{ backgroundColor: primaryColor }}
+            className="relative w-[56px] h-[56px] rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 overflow-hidden border-0 outline-none focus:outline-none focus-visible:outline-none shadow-none"
+            style={{ backgroundColor: primaryColor, boxShadow: "none" }}
           >
             {config.avatarSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -348,7 +365,7 @@ const EmbedContent = () => {
           </button>
 
           <span
-            className="pointer-events-none absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-green-400 ring-2 ring-white dark:ring-zinc-900"
+            className="pointer-events-none absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-green-400 ring-2 ring-white"
             style={{ animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite" }}
             aria-hidden="true"
           />

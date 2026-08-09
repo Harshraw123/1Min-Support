@@ -709,6 +709,74 @@ export async function reopenConversation(args: {
 }
 
 /**
+ * After a human agent replies, hand the thread back to AI for subsequent customer turns.
+ * Keeps escalation metadata for inbox history but clears assignment so the queue is free.
+ */
+export async function releaseConversationToAi(args: {
+  conversationId: string;
+  workspaceId: string;
+  releasedBy: string;
+  note?: string | null;
+}): Promise<ConversationRow | null> {
+  const [current] = await db
+    .select()
+    .from(conversation)
+    .where(
+      and(
+        eq(conversation.id, args.conversationId),
+        eq(conversation.workspace_id, args.workspaceId)
+      )
+    )
+    .limit(1);
+
+  if (!current) return null;
+
+  // Already AI-owned — nothing to do.
+  if ((current.handling_mode ?? "AI") === "AI" && current.status === "ai_active") {
+    return current;
+  }
+
+  const previousMode = getConversationMode(current);
+  const [updated] = await db
+    .update(conversation)
+    .set({
+      status: "ai_active",
+      handling_mode: "AI",
+      assigned_agent_id: null,
+      assigned_agent_email: null,
+      assigned_agent_name: null,
+      assigned_at: null,
+      resolved_at: null,
+      resolved_by: null,
+      last_message_at: new Date(),
+    })
+    .where(eq(conversation.id, current.id))
+    .returning();
+
+  if (!updated) return current;
+
+  await appendMessage({
+    conversationId: args.conversationId,
+    role: "system",
+    content:
+      args.note?.trim() ||
+      "Human agent replied. AI handling resumed for follow-up questions.",
+    senderEmail: args.releasedBy,
+    metadata: { type: "release_to_ai", releasedBy: args.releasedBy },
+  });
+
+  logConversationTransition({
+    conversationId: args.conversationId,
+    event: "HUMAN_RELEASED_TO_AI",
+    previousMode,
+    newMode: getConversationMode(updated),
+    agent: args.releasedBy,
+  });
+
+  return updated;
+}
+
+/**
  * Before delivering an AI reply, re-check ownership.
  * Handles the race where an agent takes over while Groq is still generating.
  */

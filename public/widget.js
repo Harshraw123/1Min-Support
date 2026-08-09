@@ -1,5 +1,15 @@
 (function () {
-  var script = document.currentScript;
+  // Next.js <Script> / async / deferred loaders often leave document.currentScript null.
+  // Fall back to the last oms widget script that carries data-id.
+  function resolveScript() {
+    if (document.currentScript && document.currentScript.getAttribute("data-id")) {
+      return document.currentScript;
+    }
+    var scripts = document.querySelectorAll('script[data-id][src*="widget.js"]');
+    return scripts.length ? scripts[scripts.length - 1] : null;
+  }
+
+  var script = resolveScript();
   var widgetId = script && script.getAttribute("data-id");
   var scriptSrc = script && script.getAttribute("src");
   var baseUrl = scriptSrc
@@ -29,10 +39,9 @@
   function resolveEmbedTheme() {
     var raw = script && script.getAttribute("data-theme");
     if (raw === "light" || raw === "dark" || raw === "system") return raw;
-    var root = document.documentElement;
-    if (root.classList.contains("dark")) return "dark";
-    if (root.classList.contains("light")) return "light";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    // Prefer light for host pages that don't opt in — avoids painting customer
+    // sites (and /test) dark via shared next-themes storage by accident.
+    return "light";
   }
 
   var embedTheme = resolveEmbedTheme();
@@ -94,36 +103,47 @@
       border: "0",
       zIndex: "999999",
       background: "transparent",
-      colorScheme: "light dark",
+      backgroundColor: "transparent",
+      colorScheme: "normal",
       overflow: "hidden",
+      boxShadow: "none",
+      outline: "none",
     });
+    iframe.setAttribute("allowtransparency", "true");
+    iframe.setAttribute("frameborder", "0");
 
     document.body.appendChild(iframe);
     window[globalKey].iframe = iframe;
 
-    iframe.addEventListener("load", function () {
+    var initPayload = {
+      type: "INIT",
+      token: options.token,
+      config: options.config,
+      theme: options.theme || "light",
+      instanceId: instanceId,
+    };
+
+    function postInit() {
       if (iframe.contentWindow) {
-        iframe.contentWindow.postMessage(
-          {
-            type: "INIT",
-            token: options.token,
-            config: options.config,
-            theme: options.theme || "system",
-            instanceId: instanceId,
-          },
-          baseUrl
-        );
+        iframe.contentWindow.postMessage(initPayload, baseUrl);
       }
-    });
+    }
+
+    // load can fire before the embed React tree attaches listeners — also
+    // re-send when the iframe announces READY.
+    iframe.addEventListener("load", postInit);
 
     window.addEventListener("message", function (event) {
-      if (
-        event.origin !== baseUrl ||
-        event.source !== iframe.contentWindow ||
-        !event.data ||
-        event.data.type !== "resize" ||
-        event.data.instanceId !== instanceId
-      ) {
+      if (event.origin !== baseUrl || event.source !== iframe.contentWindow || !event.data) {
+        return;
+      }
+
+      if (event.data.type === "READY" && event.data.instanceId === instanceId) {
+        postInit();
+        return;
+      }
+
+      if (event.data.type !== "resize" || event.data.instanceId !== instanceId) {
         return;
       }
 

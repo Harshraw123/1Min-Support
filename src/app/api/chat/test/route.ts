@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
       tokensUsed: result.tokensUsed,
       wouldEscalate: signal.shouldEscalate,
       escalationReason: signal.shouldEscalate ? signal.reason : null,
+      scopeDeclined: signal.scopeDeclined === true,
     });
   } catch (error) {
     console.error("[CHAT_ERROR]", error);

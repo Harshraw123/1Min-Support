@@ -1,10 +1,19 @@
 /**
  * Embed route only (imported from app/embed/layout.tsx).
  *
- * Parent / host page stylesheets do NOT apply inside this iframe document.
- * This file only: (1) creates a predictable stacking/root boundary, (2) pins
- * base semantics for links / form controls when rich content is added later.
+ * Root globals.css paints body with a gradient background. Inside the widget
+ * iframe that becomes a visible square behind the circular launcher — kill it.
  */
+
+html:has([data-embed-widget-root]),
+html:has([data-embed-widget-root]) body,
+[data-embed-widget-root] {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color-scheme: normal !important;
+}
 
 [data-embed-widget-root] {
   isolation: isolate;
@@ -26,4 +35,14 @@
 
 [data-embed-widget-root] :where(input, textarea) {
   color: inherit;
+}
+
+/* Closed launcher: no square chrome around the circle */
+[data-embed-widget-root] [data-embed-launcher] {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-embed-widget-root] [data-embed-launcher] > button {
+  box-shadow: none !important;
 }

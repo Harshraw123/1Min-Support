@@ -9,7 +9,9 @@ import {
   incrementAiMessageUsage,
 } from "@/lib/billing/checkUsageLimit";
 import {
+  alreadyEscalatedCustomerNote,
   appendMessage,
+  classifyCustomerTurn,
   detectEscalation,
   ensureUserFacingMessage,
   escalateConversation,
@@ -17,10 +19,13 @@ import {
   getConversationMode,
   getOrCreateConversation,
   humanActiveStatusMessage,
+  isEscalationBoilerplateOnly,
   listMessages,
   offlineEscalationCustomerMessage,
   refreshConversationAiEligibility,
   reopenConversation,
+  scopeDeclineMessage,
+  shouldAiAssistWhileEscalated,
   stripEscalationMarkers,
 } from "@/lib/conversations";
 import { normalizeConversationStatus } from "@/lib/conversations/types";
@@ -242,38 +247,95 @@ export async function POST(req: NextRequest) {
     }
 
     const initialEligibility = await refreshConversationAiEligibility(conv.id, workspaceId);
+    const turnKind = classifyCustomerTurn(userContent);
+    const alreadyWaitingForHuman =
+      initialEligibility.mode === "ESCALATED_WAITING_FOR_HUMAN";
+    const humanActive = initialEligibility.mode === "HUMAN_ACTIVE";
 
-    // Human owns the conversation → never auto-generate AI (no quota burn).
-    // Unassigned escalations still receive a persisted customer-facing acknowledgement.
-    if (!initialEligibility.eligible) {
-      const mode = initialEligibility.mode;
-      if (initialEligibility.needsAcknowledgement) {
-        const acknowledgement = escalationWaitingAcknowledgement(
-          "I've added your latest message to the conversation."
-        );
-        const { message: assistantMsg } = await appendMessage({
+    // Fast path: off-topic / gibberish never burns quota or opens a ticket.
+    if (
+      turnKind === "scope_decline" &&
+      (initialEligibility.eligible || alreadyWaitingForHuman)
+    ) {
+      const decline = scopeDeclineMessage();
+      const { message: assistantMsg } = await appendMessage({
+        conversationId: conv.id,
+        role: "assistant",
+        content: decline,
+        metadata: { type: "scope_decline", turnKind },
+      });
+      return withCors(
+        NextResponse.json({
           conversationId: conv.id,
-          role: "assistant",
-          content: acknowledgement,
-          metadata: { type: "escalation_waiting_acknowledgement" },
-        });
-        return withCors(
-          NextResponse.json({
-            conversationId: conv.id,
-            message: ensureUserFacingMessage(assistantMsg.content, acknowledgement),
-            messageRole: "assistant",
-            messageId: assistantMsg.id,
-            handlingMode: initialEligibility.conversation?.handling_mode ?? "HUMAN",
-            conversationMode: mode,
-            status: initialEligibility.conversation?.status ?? conv.status,
-            escalated: true,
-            aiResponded: false,
-            waitingForAgent: true,
-          }),
-          origin
-        );
-      }
+          message: decline,
+          messageRole: "assistant",
+          messageId: assistantMsg.id,
+          handlingMode: initialEligibility.conversation?.handling_mode ?? conv.handling_mode,
+          conversationMode: initialEligibility.mode,
+          status: initialEligibility.conversation?.status ?? conv.status,
+          escalated: alreadyWaitingForHuman,
+          aiResponded: true,
+          waitingForAgent: alreadyWaitingForHuman,
+          scopeDeclined: true,
+        }),
+        origin
+      );
+    }
 
+    // Human actively handling (assigned) → AI stays silent until agent replies (then released to AI).
+    if (humanActive) {
+      const statusMessage = humanActiveStatusMessage();
+      return withCors(
+        NextResponse.json({
+          conversationId: conv.id,
+          message: statusMessage,
+          messageRole: "system",
+          messageId: userMessage.id,
+          handlingMode: initialEligibility.conversation?.handling_mode ?? "HUMAN",
+          conversationMode: initialEligibility.mode,
+          status: initialEligibility.conversation?.status ?? conv.status,
+          escalated: true,
+          aiResponded: false,
+          waitingForAgent: false,
+        }),
+        origin
+      );
+    }
+
+    // Queued for a human: waiting/status pings stay as acknowledgements.
+    // Other business questions are allowed to hit AI (hybrid assist).
+    if (alreadyWaitingForHuman && !shouldAiAssistWhileEscalated(turnKind)) {
+      const acknowledgement = escalationWaitingAcknowledgement(
+        turnKind === "request_human"
+          ? "A teammate will take this as soon as they're available."
+          : "I've added your latest message to the conversation."
+      );
+      const { message: assistantMsg } = await appendMessage({
+        conversationId: conv.id,
+        role: "assistant",
+        content: acknowledgement,
+        metadata: { type: "escalation_waiting_acknowledgement", turnKind },
+      });
+      return withCors(
+        NextResponse.json({
+          conversationId: conv.id,
+          message: ensureUserFacingMessage(assistantMsg.content, acknowledgement),
+          messageRole: "assistant",
+          messageId: assistantMsg.id,
+          handlingMode: initialEligibility.conversation?.handling_mode ?? "HUMAN",
+          conversationMode: initialEligibility.mode,
+          status: initialEligibility.conversation?.status ?? conv.status,
+          escalated: true,
+          aiResponded: false,
+          waitingForAgent: true,
+        }),
+        origin
+      );
+    }
+
+    // AI_ACTIVE, or escalated-waiting with an AI-assistable turn → continue to Groq.
+    if (!initialEligibility.eligible && !alreadyWaitingForHuman) {
+      const mode = initialEligibility.mode;
       const statusMessage = humanActiveStatusMessage();
       return withCors(
         NextResponse.json({
@@ -332,12 +394,21 @@ export async function POST(req: NextRequest) {
 
     const history = await listMessages(conv.id);
     // Never feed leaked markers (or system/agent turns) back into the model prompt.
+    // While queued, also neutralize prior handoff boilerplate so the model answers
+    // the new product question instead of copying "noted for support…".
     const completionMessages = history
       .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({
-        role: m.role,
-        content: m.role === "assistant" ? stripEscalationMarkers(m.content) : m.content,
-      }));
+      .map((m) => {
+        if (m.role !== "assistant") {
+          return { role: m.role, content: m.content };
+        }
+        let content = stripEscalationMarkers(m.content);
+        if (alreadyWaitingForHuman && isEscalationBoilerplateOnly(content)) {
+          content =
+            "An earlier request was placed in the support queue. Continue helping with new product questions from CONTEXT.";
+        }
+        return { role: m.role, content };
+      });
 
     let result;
     try {
@@ -352,6 +423,8 @@ export async function POST(req: NextRequest) {
         surface: "widget",
         conversation_id: conv.id,
         message_id: userMessage.id,
+        // Already queued → answer new product questions; don't re-escalate.
+        assistWhileEscalated: alreadyWaitingForHuman,
       });
     } catch (error) {
       console.error("[WIDGET_CHAT_AI_ERROR]", error);
@@ -389,8 +462,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Race: agent may have taken ownership while the model was generating.
+    // Hybrid assist while queued is intentional — still deliver the AI answer.
     const eligibility = await refreshConversationAiEligibility(conv.id, workspaceId);
-    if (!eligibility.eligible) {
+    const hybridAssistOk =
+      eligibility.mode === "ESCALATED_WAITING_FOR_HUMAN" &&
+      shouldAiAssistWhileEscalated(turnKind);
+
+    if (!eligibility.eligible && !hybridAssistOk) {
       const mode = eligibility.mode;
       if (eligibility.needsAcknowledgement) {
         const acknowledgement = escalationWaitingAcknowledgement(
@@ -456,21 +534,58 @@ export async function POST(req: NextRequest) {
     let status = eligibility.conversation?.status ?? conv.status;
     let handlingMode = eligibility.conversation?.handling_mode ?? "AI";
     let conversationMode = getConversationMode(eligibility.conversation ?? conv);
+    let waitingForAgent = false;
+
+    const stillQueued =
+      alreadyWaitingForHuman || eligibility.mode === "ESCALATED_WAITING_FOR_HUMAN";
 
     if (signal.shouldEscalate) {
-      const escalatedRow = await escalateConversation({
-        conversationId: conv.id,
-        workspaceId,
-        reason: signal.reason,
-        summary: signal.summary,
-        escalatedBy: signal.reason === "CUSTOMER_REQUESTED_HUMAN" ? "CUSTOMER" : "AI",
-        customerMessage: userContent,
-      });
-      customerFacing = offlineEscalationCustomerMessage(customerFacing);
+      if (stillQueued) {
+        // Already in the human queue — never open a duplicate ticket.
+        // Prefer a real AI product answer when we have one; only fall back to a note
+        // when the model produced pure handoff boilerplate (or user asked for a human).
+        if (signal.reason === "CUSTOMER_REQUESTED_HUMAN" || turnKind === "request_human") {
+          customerFacing = escalationWaitingAcknowledgement(
+            "A teammate will take this as soon as they're available."
+          );
+        } else if (isEscalationBoilerplateOnly(customerFacing)) {
+          customerFacing = alreadyEscalatedCustomerNote();
+        } else {
+          // Keep the stripped AI answer (e.g. product details from knowledge).
+          customerFacing = ensureUserFacingMessage(customerFacing);
+        }
+        escalated = true;
+        waitingForAgent = true;
+        status = eligibility.conversation?.status ?? "escalated";
+        handlingMode = "HUMAN";
+        conversationMode = "ESCALATED_WAITING_FOR_HUMAN";
+      } else {
+        const escalatedRow = await escalateConversation({
+          conversationId: conv.id,
+          workspaceId,
+          reason: signal.reason,
+          summary: signal.summary,
+          escalatedBy: signal.reason === "CUSTOMER_REQUESTED_HUMAN" ? "CUSTOMER" : "AI",
+          customerMessage: userContent,
+        });
+        customerFacing = offlineEscalationCustomerMessage(customerFacing);
+        escalated = true;
+        waitingForAgent = true;
+        status = escalatedRow.status;
+        handlingMode = escalatedRow.handling_mode;
+        conversationMode = getConversationMode(escalatedRow);
+      }
+    } else if (stillQueued) {
+      // Answered while queued — stay escalated so the original human request remains open.
+      // If the model still slipped into handoff wording, replace only then.
+      if (isEscalationBoilerplateOnly(customerFacing)) {
+        customerFacing = alreadyEscalatedCustomerNote();
+      }
       escalated = true;
-      status = escalatedRow.status;
-      handlingMode = escalatedRow.handling_mode;
-      conversationMode = getConversationMode(escalatedRow);
+      waitingForAgent = true;
+      status = eligibility.conversation?.status ?? "escalated";
+      handlingMode = eligibility.conversation?.handling_mode ?? "HUMAN";
+      conversationMode = "ESCALATED_WAITING_FOR_HUMAN";
     }
 
     const { message: assistantMsg } = await appendMessage({
@@ -480,7 +595,10 @@ export async function POST(req: NextRequest) {
       metadata: {
         usedRag: result.retrieval?.usedRag ?? false,
         escalated,
-        escalationReason: escalated ? signal.reason : undefined,
+        escalationReason: escalated && signal.shouldEscalate ? signal.reason : undefined,
+        scopeDeclined: signal.scopeDeclined === true,
+        hybridAssist: stillQueued,
+        turnKind,
       },
     });
 
@@ -500,7 +618,8 @@ export async function POST(req: NextRequest) {
         status,
         escalated,
         aiResponded: true,
-        waitingForAgent: escalated,
+        waitingForAgent,
+        scopeDeclined: signal.scopeDeclined === true,
       }),
       origin
     );

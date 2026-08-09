@@ -3,6 +3,7 @@ import {
   appendMessage,
   getConversationForOrg,
   getConversationMode,
+  releaseConversationToAi,
   requireOrgSession,
   resolveOrgAgent,
   takeConversation,
@@ -15,8 +16,8 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * Human agent reply to the customer.
- * Auto-takes the conversation if still unassigned (same agent), then persists an agent message.
- * AI must not respond here — handling_mode is forced to HUMAN.
+ * Auto-takes if unassigned, persists the agent message, then releases the thread
+ * back to AI so follow-up business questions are handled by the bot again.
  */
 export async function POST(req: NextRequest, ctx: Ctx) {
   const auth = await requireOrgSession();
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     const body = (await req.json().catch(() => ({}))) as {
       message?: string;
       clientMessageId?: string;
+      keepHuman?: boolean;
     };
 
     const content = typeof body.message === "string" ? body.message.trim() : "";
@@ -82,7 +84,6 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       }
       conv = taken.conversation;
     } else {
-      // Ensure human mode even if status was stale.
       const [updated] = await db
         .update(conversation)
         .set({
@@ -101,13 +102,6 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       if (updated) conv = updated;
     }
 
-    console.log("[CONVERSATION_STATE]", {
-      conversationId: id,
-      event: "HUMAN_REPLY",
-      newMode: getConversationMode(conv),
-      agent: agent.email,
-    });
-
     const { message } = await appendMessage({
       conversationId: id,
       role: "agent",
@@ -116,6 +110,24 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       senderEmail: agent.email,
       senderName: auth.ctx.name || agent.name,
       clientMessageId: body.clientMessageId?.trim() || null,
+    });
+
+    // Default: after the human answers, AI resumes follow-ups.
+    // Pass keepHuman=true only when the agent must stay on the thread.
+    if (!body.keepHuman) {
+      const released = await releaseConversationToAi({
+        conversationId: id,
+        workspaceId: auth.ctx.organizationId,
+        releasedBy: agent.email,
+      });
+      if (released) conv = released;
+    }
+
+    console.log("[CONVERSATION_STATE]", {
+      conversationId: id,
+      event: body.keepHuman ? "HUMAN_REPLY_KEEP" : "HUMAN_REPLY_RELEASE_TO_AI",
+      newMode: getConversationMode(conv),
+      agent: agent.email,
     });
 
     return NextResponse.json({

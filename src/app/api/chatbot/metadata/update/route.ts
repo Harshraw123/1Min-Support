@@ -1,7 +1,7 @@
 import { db } from "@/db/client";
 import { chatBotMetadata, sections } from "@/db/schema";
 import { getSession } from "@/lib/auth/getSession";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 const DEFAULT_PRIMARY_COLOR = "#111827";
@@ -55,7 +55,37 @@ export async function PUT(req: Request) {
       defaultSectionId = section?.id ?? null;
     }
 
-    const [saved] = await db
+    const [existing] = await db
+      .select()
+      .from(chatBotMetadata)
+      .where(eq(chatBotMetadata.chatbot_id, workspaceId))
+      .orderBy(asc(chatBotMetadata.created_at), asc(chatBotMetadata.id))
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(chatBotMetadata)
+        .set({
+          color: primaryColor,
+          welcome_message: welcomeMessage,
+          avatar_src: avatarSrc,
+          default_section_id: defaultSectionId,
+          updated_at: new Date(),
+        })
+        .where(eq(chatBotMetadata.chatbot_id, workspaceId));
+
+      return NextResponse.json({
+        data: {
+          primaryColor,
+          welcomeMessage,
+          avatarSrc,
+          defaultSectionId,
+          widgetId: existing.widget_id,
+        },
+      });
+    }
+
+    const [created] = await db
       .insert(chatBotMetadata)
       .values({
         chatbot_id: workspaceId,
@@ -64,25 +94,15 @@ export async function PUT(req: Request) {
         avatar_src: avatarSrc,
         default_section_id: defaultSectionId,
       })
-      .onConflictDoUpdate({
-        target: chatBotMetadata.chatbot_id,
-        set: {
-          color: primaryColor,
-          welcome_message: welcomeMessage,
-          avatar_src: avatarSrc,
-          default_section_id: defaultSectionId,
-          updated_at: sql`now()`,
-        },
-      })
       .returning();
 
     return NextResponse.json({
       data: {
-        primaryColor: saved.color,
-        welcomeMessage: saved.welcome_message,
-        avatarSrc: saved.avatar_src,
-        defaultSectionId: saved.default_section_id,
-        widgetId: saved.widget_id,
+        primaryColor: created.color,
+        welcomeMessage: created.welcome_message,
+        avatarSrc: created.avatar_src,
+        defaultSectionId: created.default_section_id,
+        widgetId: created.widget_id,
       },
     });
   } catch (error) {
