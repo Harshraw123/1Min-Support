@@ -64,10 +64,15 @@ function newClientMessageId() {
   return `cmsg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
-/** Client-side safety net for any [[ESCALATE|...]] that slipped through older responses. */
+/** Client-side safety net for escalate markers + offline-queue suffix leaks. */
 function sanitizeAssistantContent(content: string) {
   return content
     .replace(/\[\[\s*ESCALATE\b[\s\S]*?\]\]\s*/gi, "")
+    .replace(
+      /\s*Our support team isn't always online immediately, but your conversation has been saved and an agent will respond as soon as they're available\.?/gi,
+      ""
+    )
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 

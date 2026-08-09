@@ -27,6 +27,7 @@ import {
   scopeDeclineMessage,
   shouldAiAssistWhileEscalated,
   stripEscalationMarkers,
+  stripOfflineQueueBoilerplate,
 } from "@/lib/conversations";
 import { normalizeConversationStatus } from "@/lib/conversations/types";
 
@@ -402,7 +403,7 @@ export async function POST(req: NextRequest) {
         if (m.role !== "assistant") {
           return { role: m.role, content: m.content };
         }
-        let content = stripEscalationMarkers(m.content);
+        let content = stripOfflineQueueBoilerplate(m.content);
         if (alreadyWaitingForHuman && isEscalationBoilerplateOnly(content)) {
           content =
             "An earlier request was placed in the support queue. Continue helping with new product questions from CONTEXT.";
@@ -526,8 +527,9 @@ export async function POST(req: NextRequest) {
     });
 
     // Defense in depth: never persist/return [[ESCALATE|...]] to customers.
+    // Also strip the recurring offline-queue suffix so hybrid answers stay clean.
     let customerFacing = ensureUserFacingMessage(
-      signal.customerMessage,
+      stripOfflineQueueBoilerplate(signal.customerMessage),
       "I couldn't generate a complete answer, but I've saved your message."
     );
     let escalated = false;
@@ -552,7 +554,9 @@ export async function POST(req: NextRequest) {
           customerFacing = alreadyEscalatedCustomerNote();
         } else {
           // Keep the stripped AI answer (e.g. product details from knowledge).
-          customerFacing = ensureUserFacingMessage(customerFacing);
+          customerFacing = ensureUserFacingMessage(
+            stripOfflineQueueBoilerplate(customerFacing)
+          );
         }
         escalated = true;
         waitingForAgent = true;
@@ -577,7 +581,7 @@ export async function POST(req: NextRequest) {
       }
     } else if (stillQueued) {
       // Answered while queued — stay escalated so the original human request remains open.
-      // If the model still slipped into handoff wording, replace only then.
+      customerFacing = stripOfflineQueueBoilerplate(customerFacing);
       if (isEscalationBoilerplateOnly(customerFacing)) {
         customerFacing = alreadyEscalatedCustomerNote();
       }
@@ -586,12 +590,14 @@ export async function POST(req: NextRequest) {
       status = eligibility.conversation?.status ?? "escalated";
       handlingMode = eligibility.conversation?.handling_mode ?? "HUMAN";
       conversationMode = "ESCALATED_WAITING_FOR_HUMAN";
+    } else {
+      customerFacing = stripOfflineQueueBoilerplate(customerFacing);
     }
 
     const { message: assistantMsg } = await appendMessage({
       conversationId: conv.id,
       role: "assistant",
-      content: ensureUserFacingMessage(customerFacing),
+      content: ensureUserFacingMessage(stripOfflineQueueBoilerplate(customerFacing)),
       metadata: {
         usedRag: result.retrieval?.usedRag ?? false,
         escalated,

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import {
   Loader2,
@@ -113,7 +114,13 @@ function newClientId() {
 }
 
 export default function ConversationsInbox() {
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const searchParams = useSearchParams();
+  const initialFilter = (() => {
+    const raw = searchParams.get("filter");
+    const allowed = new Set(FILTERS.map((f) => f.key));
+    return raw && allowed.has(raw as FilterKey) ? (raw as FilterKey) : "all";
+  })();
+  const [filter, setFilter] = useState<FilterKey>(initialFilter);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -337,7 +344,7 @@ export default function ConversationsInbox() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] min-h-[560px] flex-col gap-0 overflow-hidden border border-border bg-card md:rounded-xl">
+    <div className="flex h-[calc(100vh-4rem)] min-h-[560px] flex-col gap-0 overflow-hidden border border-border  md:rounded-xl">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Conversations</h2>
