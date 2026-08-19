@@ -65,8 +65,8 @@ export async function POST(req: NextRequest) {
       scopeDeclined: signal.scopeDeclined === true,
     });
   } catch (error) {
-    console.error("[CHAT_ERROR]", error);
-    const msg = error instanceof Error ? error.message : "";
+    console.error("[CHAT_TEST_ERROR]", error);
+    const msg = error instanceof Error ? error.message : "Internal Server Error";
     if (msg === "Invalid messages array") {
       return NextResponse.json({ error: msg }, { status: 400 });
     }
@@ -74,8 +74,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No response generated. Please retry." }, { status: 502 });
     }
     if (msg === "GROQ_API_KEY is not configured") {
-      return NextResponse.json({ error: "Chat is not configured" }, { status: 503 });
+      return NextResponse.json({ error: "Chat is not configured (GROQ_API_KEY missing)" }, { status: 503 });
     }
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return NextResponse.json(
+      {
+        error: msg || "Internal Server Error",
+        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
+      },
+      { status: 500 }
+    );
   }
 }

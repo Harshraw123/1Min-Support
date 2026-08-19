@@ -18,7 +18,7 @@ import { deleteKnowledgeChunks } from "@/lib/knowledge/deleteKnowledgeChunks";
 import { isKnowledgeChunksReady } from "@/lib/db/knowledgeInfra";
 import { isMissingRelationError } from "@/lib/db/pgErrors";
 
-const MODEL_NAME = "llama-3.3-70b-versatile";
+const MODEL_NAME = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-120b";
 
 // Safe char limit to stay under Groq free tier (12k TPM)
 // ~5000 chars is roughly 1250 tokens plus prompt and response budget.

@@ -7,11 +7,15 @@ import { countConversationTokens } from "@/lib/ai/countConversionToken";
 import { buildKnowledgeContextForChat } from "@/lib/knowledge/buildKnowledgeContext";
 import { stripEscalationMarkers } from "@/lib/conversations/escalation";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+function getGroqClient() {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY is not configured");
+  }
+  return new Groq({ apiKey });
+}
 
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-120b";
 
 function formatContextValue(value: unknown): string {
   // Section ke flexible fields prompt me readable text ban kar jate hain.
@@ -274,6 +278,7 @@ ${context ? `KNOWLEDGE:\n${context}` : ""}`;
   }
 
   // Final model call strict context-only support answer generate karta hai.
+  const groq = getGroqClient();
   const response = await groq.chat.completions.create({
     model: MODEL,
     messages: [{ role: "system", content: systemPrompt }, ...completionMessages],
