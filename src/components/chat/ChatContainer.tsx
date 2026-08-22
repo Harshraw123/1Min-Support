@@ -294,7 +294,9 @@ const ChatContainer = ({
         const errText =
           typeof data?.error === "string" && data.error.trim()
             ? data.error.trim()
-            : `Request failed (${response.status})`;
+            : response.status === 500
+              ? "Server error — check /api/health/chat on your deployed site"
+              : `Request failed (${response.status})`;
         throw new Error(errText);
       }
 
@@ -327,11 +329,15 @@ const ChatContainer = ({
       }
     } catch (e) {
       console.error("[embed chat]", e);
+      const detail =
+        e instanceof Error && e.message.trim()
+          ? e.message.trim()
+          : "Sorry, something went wrong. Please try again in a moment.";
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "Sorry, something went wrong. Please try again in a moment.",
+          content: detail,
         },
       ]);
     } finally {

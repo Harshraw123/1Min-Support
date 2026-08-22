@@ -2,7 +2,7 @@ import { chatBotMetadata } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { SignJWT } from "jose";
-import crypto from "crypto";
+import { randomUUID } from "node:crypto";
 import { db } from "@/db/client";
 
 const CORS_HEADERS = {
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     }
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    const sessionId = crypto.randomUUID();
+    const sessionId = randomUUID();
 
     const token = await new SignJWT({
       widgetId: bot.widget_id,

@@ -203,7 +203,9 @@ const ChatbotPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error(`Chat request failed with status ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        const message = errorData?.error || `Chat request failed with status ${response.status}`;
+        throw new Error(message);
       }
 
       const data = await response.json();
@@ -218,9 +220,13 @@ const ChatbotPage = () => {
       ]);
     } catch (error) {
       console.error("Chat Error:", error);
+      const displayError =
+        error instanceof Error && error.message
+          ? error.message
+          : "Sorry, something went wrong. Please try again.";
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, something went wrong. Please try again." },
+        { role: "assistant", content: displayError },
       ]);
     } finally {
       setIsTyping(false); // Remove the typing indicator

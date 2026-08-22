@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
    * 4) Else run shared RAG completion, re-check ownership before deliver
    * 5) Escalate into persistent queue when AI cannot resolve
    */
+  const origin = req.headers.get("origin");
   try {
     const auth = req.headers.get("authorization");
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -161,7 +162,6 @@ export async function POST(req: NextRequest) {
       sectionId = first?.id ?? null;
     }
 
-    const origin = req.headers.get("origin");
     const visitorIp =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       req.headers.get("x-real-ip") ||
@@ -643,6 +643,15 @@ export async function POST(req: NextRequest) {
     if (msg === "GROQ_API_KEY is not configured") {
       return withCors(NextResponse.json({ error: "Chat is not configured" }, { status: 503 }));
     }
-    return withCors(new NextResponse("Internal Server Error", { status: 500 }));
+    return withCors(
+      NextResponse.json(
+        {
+          error: msg || "Internal Server Error",
+          code: "WIDGET_CHAT_ERROR",
+        },
+        { status: 500 }
+      ),
+      origin
+    );
   }
 }

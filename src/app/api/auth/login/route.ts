@@ -3,7 +3,7 @@
  * Purpose: Authentication flow ko initialize karna aur CSRF protection ke liye state set karna.
  */
 
-import crypto from "crypto";
+import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { scalekit } from "@/lib/auth/scalekit";
 import { NextRequest, NextResponse } from "next/server";
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     /* 1. SECURITY: Ek 16-byte ka random 'state' generate karna.
        Yeh login process ke dauran CSRF attack se bachata hai.
     */
-    const state = crypto.randomBytes(16).toString("hex");
+    const state = randomBytes(16).toString("hex");
 
     /* 2. STORAGE: State ko browser cookie mein save karna.
        - httpOnly: JavaScript isse read nahi kar payegi (Secure).

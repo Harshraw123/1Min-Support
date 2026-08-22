@@ -22,7 +22,7 @@ An agentic AI customer support SaaS that transforms business knowledge into auto
 | ORM | Drizzle ORM |
 | Vector search | pgvector inside PostgreSQL |
 | Keyword search prep | `pg_trgm` |
-| LLM | Groq SDK, `llama-3.3-70b-versatile` |
+| LLM | Groq SDK, `openai/gpt-oss-120b` |
 | Embeddings | Hugging Face, `BAAI/bge-small-en-v1.5` |
 | Embedding dimensions | `vector(384)` |
 | Auth / workspace identity | `session.organization_id` |

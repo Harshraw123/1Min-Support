@@ -1,10 +1,14 @@
 import { Groq } from "groq-sdk";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY, // never hardcode in production
-});
+function getGroqClient() {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY is not configured");
+  }
+  return new Groq({ apiKey });
+}
 
-const MODEL_NAME = "llama-3.3-70b-versatile";
+const MODEL_NAME = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-120b";
 const DEFAULT_MAX_INPUT_CHARS = 15000;
 
 export type GroqTokenUsage = {
@@ -101,6 +105,7 @@ ${options?.taskInstruction ? `\n${options.taskInstruction}` : ""}
 RAW CONTENT:
 ${truncatedContent}`;
 
+    const groq = getGroqClient();
     const chatCompletion = await groq.chat.completions.create({
       model: MODEL_NAME,
       messages: [
