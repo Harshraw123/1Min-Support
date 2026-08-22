@@ -86,7 +86,7 @@ export async function workspaceChatCompletion(args: {
   const { workspaceId, section_id, knowledge_source_ids } = args;
   let { messages } = args;
 
-  if (!process.env.GROQ_API_KEY) {
+  if (!process.env.GROQ_API_KEY?.trim()) {
     throw new Error("GROQ_API_KEY is not configured");
   }
 

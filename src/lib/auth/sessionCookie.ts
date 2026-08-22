@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import { createHash, createHmac, timingSafeEqual as cryptoTimingSafeEqual } from "node:crypto";
 
 const COOKIE_NAME = "sk_session";
 
@@ -26,18 +26,18 @@ function fromB64url(input: string): Buffer {
 
 function sha256(data: string): Buffer {
   // Access token ka hash store hota hai, raw token cookie me nahi.
-  return crypto.createHash("sha256").update(data).digest();
+  return createHash("sha256").update(data).digest();
 }
 
 function hmac(secret: string, data: string): Buffer {
   // Cookie payload ko tamper-proof banane ke liye HMAC signature banta hai.
-  return crypto.createHmac("sha256", secret).update(data).digest();
+  return createHmac("sha256", secret).update(data).digest();
 }
 
 function timingSafeEqual(a: Buffer, b: Buffer): boolean {
   // Signature compare timing-safe hota hai taaki leak risk kam rahe.
   if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  return cryptoTimingSafeEqual(a, b);
 }
 
 export function createScalekitSessionCookieValue(accessToken: string, maxAgeSeconds: number): string {

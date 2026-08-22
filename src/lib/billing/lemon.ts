@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 const LEMON_API = "https://api.lemonsqueezy.com/v1";
 
@@ -25,11 +25,11 @@ export function verifyLemonWebhookSignature(rawBody: string, signatureHeader: st
   const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET?.trim();
   if (!secret || !signatureHeader) return false;
 
-  const digest = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  const digest = createHmac("sha256", secret).update(rawBody).digest("hex");
   const a = Buffer.from(digest, "hex");
   const b = Buffer.from(signatureHeader, "hex");
   if (a.length === 0 || a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  return timingSafeEqual(a, b);
 }
 
 /**
