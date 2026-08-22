@@ -28,7 +28,7 @@ Dashboard user
 - **Next.js App Router** for dashboard, embed UI, and API routes.
 - **Drizzle ORM + PostgreSQL / Neon** for app data.
 - **pgvector inside Postgres** for embeddings, instead of Pinecone / Weaviate / Qdrant.
-- **Groq SDK with `llama-3.3-70b-versatile`** for summarization, cleaning, and chat completions.
+- **Groq SDK with `openai/gpt-oss-120b`** for summarization, cleaning, and chat completions.
 - **Hugging Face `BAAI/bge-small-en-v1.5`** for 384-dimensional embeddings.
 - **Workspace isolation through `session.organization_id`**.
 - **Widget auth through signed JWT**, separate from dashboard session auth.

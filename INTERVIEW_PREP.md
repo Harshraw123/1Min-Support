@@ -43,7 +43,7 @@ Ye ek SaaS platform hai jahan business apna data (PDFs, links, text) upload kart
 | **Framework** | Next.js 15 (App Router) + TypeScript | Fullstack capabilities (React 19 Server Components, Edge/Node API routes, fast SSR, type safety across client and server). |
 | **Database & ORM** | PostgreSQL (Neon serverless) + Drizzle ORM | Relational integrity for multi-tenancy, serverless scale, and Drizzle gives zero-overhead type-safe SQL queries. |
 | **Vector DB** | `pgvector` inside PostgreSQL | **No external Vector DB (Pinecone/Qdrant)!** Keeps embeddings in the exact same transactional DB with workspace isolation (`workspace_id`), zero data drift, and lower cost. |
-| **LLM Engine** | Groq SDK (`llama-3.3-70b-versatile`) | Ultra-low latency (sub-500ms inference) for real-time customer support chat at fraction of proprietary OpenAI costs. |
+| **LLM Engine** | Groq SDK (`openai/gpt-oss-120b`) | Ultra-low latency (sub-500ms inference) for real-time customer support chat at fraction of proprietary OpenAI costs. |
 | **Embeddings** | Hugging Face (`BAAI/bge-small-en-v1.5`) | Compact **384 dimensions** (fast similarity calculations, low memory footprint in Postgres compared to 1536d OpenAI vectors). |
 | **Auth Boundaries** | Scalekit (Session Cookie) + Custom Signed JWT | Strict separation: Dashboard users authenticate via organizational session cookies; public website visitors use short-lived HS256 signed JWTs. |
 | **Billing** | Lemon Squeezy | Webhook-driven recurring subscriptions with monthly AI message quotas (100 Free / 5000 Pro). |
