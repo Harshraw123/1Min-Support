@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Hides the floating "N" dev toolbar on /test and /embed (production builds never show it).
+  turbopack: {
+    root: __dirname,
+  },
   devIndicators: false,
   images: {
     remotePatterns: [
